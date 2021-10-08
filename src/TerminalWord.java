@@ -1,4 +1,7 @@
-public class TerminalWord extends Word {
+import java.io.BufferedWriter;
+import java.io.IOException;
+
+public class TerminalWord implements Word {
     private final String wordType;
     private final String wordName;
 
@@ -16,5 +19,11 @@ public class TerminalWord extends Word {
         return wordName;
     }
 
-
+    public void print(BufferedWriter bw) {
+        try {
+            bw.write(wordType + " " + wordName + "\n");
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
 }

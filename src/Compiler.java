@@ -1,4 +1,11 @@
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
 import java.util.ArrayList;
 
 public class Compiler {
@@ -19,18 +26,23 @@ public class Compiler {
         LexicalAnalysis lexicalAnalysis = new LexicalAnalysis(strings);
         lexicalAnalysis.analyse();
         ArrayList<String[]> results = lexicalAnalysis.getLexicalAnalysisResult();
-        //        for (String[] strings1 : results) {
-        //            System.out.println(strings1[0] + " " + strings1[1]);
-        //        }
-        //        BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(new FileOutputStream("output.txt")));
-        //        for (String[] strings1 : results) {
-        //            bw.write(strings1[0] + " " + strings1[1] + "\n");
-        //        }
-        //        bw.close();
+//        for (String[] strings1 : results) {
+//            System.out.println(strings1[0] + " " + strings1[1]);
+//        }
+//        BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(new FileOutputStream("output.txt")));
+//        for (String[] strings1 : results) {
+//            bw.write(strings1[0] + " " + strings1[1] + "\n");
+//        }
+//        bw.close();
         ArrayList<TerminalWord> terminalWords = new ArrayList<>();
         for (String[] string1 : results) {
             terminalWords.add(new TerminalWord(string1[0], string1[1]));
         }
-
+        GrammaticalAnalysis grammaticalAnalysis = new GrammaticalAnalysis(terminalWords);
+        grammaticalAnalysis.analyse();
+        NonTerminalWord compUnit = grammaticalAnalysis.getCompUnit();
+        BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(new FileOutputStream("output.txt")));
+        compUnit.print(bw);
+        bw.close();
     }
 }

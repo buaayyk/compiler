@@ -13,6 +13,10 @@ public class GrammaticalAnalysis {
         this.compUnit = new NonTerminalWord("<CompUnit>");
     }
 
+    public NonTerminalWord getCompUnit() {
+        return compUnit;
+    }
+
     public void analyse() {
         NonTerminalWord nonTerminalWord = Decl();
         while (nonTerminalWord != null) {
