@@ -19,13 +19,18 @@ public class Compiler {
         LexicalAnalysis lexicalAnalysis = new LexicalAnalysis(strings);
         lexicalAnalysis.analyse();
         ArrayList<String[]> results = lexicalAnalysis.getLexicalAnalysisResult();
-        for (String[] strings1 : results) {
-            System.out.println(strings1[0] + " " + strings1[1]);
+        //        for (String[] strings1 : results) {
+        //            System.out.println(strings1[0] + " " + strings1[1]);
+        //        }
+        //        BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(new FileOutputStream("output.txt")));
+        //        for (String[] strings1 : results) {
+        //            bw.write(strings1[0] + " " + strings1[1] + "\n");
+        //        }
+        //        bw.close();
+        ArrayList<TerminalWord> terminalWords = new ArrayList<>();
+        for (String[] string1 : results) {
+            terminalWords.add(new TerminalWord(string1[0], string1[1]));
         }
-        BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(new FileOutputStream("output.txt")));
-        for (String[] strings1 : results) {
-            bw.write(strings1[0] + " " + strings1[1] + "\n");
-        }
-        bw.close();
+
     }
 }
