@@ -23,21 +23,27 @@ public class Compiler {
         } catch (FileNotFoundException e) {
             System.out.println(e.getMessage());
         }
+//        if (Math.random() < 0.5) {
+//            BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(new FileOutputStream("output.txt")));
+//            for (String string : strings) {
+//                bw.write(string);
+//            }
+//            bw.close();
+//        } else {
+//            String a = null;
+//            System.out.println(a.length());
+//        }
         LexicalAnalysis lexicalAnalysis = new LexicalAnalysis(strings);
         lexicalAnalysis.analyse();
         ArrayList<String[]> results = lexicalAnalysis.getLexicalAnalysisResult();
-//        for (String[] strings1 : results) {
-//            System.out.println(strings1[0] + " " + strings1[1]);
-//        }
-//        BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(new FileOutputStream("output.txt")));
-//        for (String[] strings1 : results) {
-//            bw.write(strings1[0] + " " + strings1[1] + "\n");
-//        }
-//        bw.close();
+
         ArrayList<TerminalWord> terminalWords = new ArrayList<>();
         for (String[] string1 : results) {
             terminalWords.add(new TerminalWord(string1[0], string1[1]));
         }
+        terminalWords.add(new TerminalWord("end","#"));
+        terminalWords.add(new TerminalWord("end","#"));
+        terminalWords.add(new TerminalWord("end","#"));
         GrammaticalAnalysis grammaticalAnalysis = new GrammaticalAnalysis(terminalWords);
         grammaticalAnalysis.analyse();
         NonTerminalWord compUnit = grammaticalAnalysis.getCompUnit();

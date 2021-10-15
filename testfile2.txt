@@ -1,0 +1,54 @@
+//#include <stdio.h>
+
+//常量声明C级
+
+//ConstDecl → 'const' BType ConstDef { ',' ConstDef } ';'  花括号重复0次和多次 
+const int a1 = 1;
+const int a2 = 2, a3 = 3;
+
+
+//变量声明C级
+int a4;
+int a5, a6;
+int a8 = 8 * 8;
+
+int main(){
+	int t;
+	t=getint();
+	printf("19377448\n");
+	int RelExp1,RelExp2=0,RelExp3=0,RelExp4=0,RelExp5=0;
+	RelExp1 = (1+2+3);
+	if((1+2+3) < (2+3+4)){
+		RelExp2 = 1;
+	}
+	if((1+2+3) > (2+3+4)){
+		RelExp3 = 1;
+	}
+	if((1+2+3) <= (2+3+4)){
+		RelExp4 = 1;
+	}
+	if((1+2+3) >= (2+3+4)){
+		RelExp5 = 1;
+	}
+	printf("RelExp2 = (1+2+3) < (2+3+4) = %d\n",RelExp2);
+	printf("RelExp3 = (1+2+3) > (2+3+4) = %d\n",RelExp3);
+	printf("RelExp4 = (1+2+3) <= (2+3+4) = %d\n",RelExp4);
+	printf("RelExp5 = (1+2+3) >= (2+3+4) = %d\n",RelExp5);
+	int EqExp1,EqExp2=0,EqExp3=0;
+	EqExp1 = 1;
+	if(1==2){
+		EqExp2 = 1;
+	}
+	if(1!=2){
+		EqExp3 = 1;
+	}
+	printf("EqExp1 = 1 = %d\n",EqExp1);
+	printf("EqExp1 = 1 == 2 = %d\n",EqExp2);
+	printf("EqExp1 = 1 != 2 = %d\n",EqExp3);
+	int LAndExp,LOrExp;
+	LAndExp = 1;
+	LOrExp = 2;
+	printf("LAndExp = %d\n",LAndExp);
+	printf("LOrExp = %d\n",LOrExp);
+	return 0;
+}

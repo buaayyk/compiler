@@ -29,15 +29,17 @@ public class GrammaticalAnalysis {
             nonTerminalWord = FuncDef();
         }
         nonTerminalWord = MainFuncDef();
-        if (nonTerminalWord == null) {
-            compUnit = null;
-        } else {
+        if (nonTerminalWord != null && index < terminalWords.size()
+                && terminalWords.get(index).getWordType().equals("end")) {
             compUnit.add(nonTerminalWord);
+        } else {
+            compUnit = null;
         }
     }
 
     private NonTerminalWord Decl() {
         NonTerminalWord decl = new NonTerminalWord("<Decl>");
+        int start = index;
         NonTerminalWord nonTerminalWord;
         nonTerminalWord = ConstDecl();
         if (nonTerminalWord != null) {
@@ -49,6 +51,7 @@ public class GrammaticalAnalysis {
             decl.add(nonTerminalWord);
             return decl;
         }
+        index = start;
         return null;
     }
 
@@ -89,6 +92,7 @@ public class GrammaticalAnalysis {
             terminalWord = terminalWords.get(index);
         }
         terminalWord = terminalWords.get(index);
+        index += 1;
         if (!terminalWord.getWordName().equals(";") || !terminalWord.getWordType().equals("SEMICN")) {
             index = start;
             return null;
@@ -103,7 +107,7 @@ public class GrammaticalAnalysis {
         TerminalWord terminalWord;
         terminalWord = terminalWords.get(index);
         index += 1;
-        if (terminalWord == null) {
+        if (!terminalWord.getWordName().equals("int") || !terminalWord.getWordType().equals("INTTK")) {
             index = start;
             return null;
         }
@@ -164,7 +168,7 @@ public class GrammaticalAnalysis {
         TerminalWord terminalWord;
         NonTerminalWord nonTerminalWord;
         terminalWord = terminalWords.get(index);
-        if (terminalWord.getWordName().equals("{") && terminalWord.getWordType().equals("RBRACE")) {
+        if (terminalWord.getWordName().equals("{") && terminalWord.getWordType().equals("LBRACE")) {
             index += 1;
             constInitVal.add(terminalWord);
             nonTerminalWord = ConstInitVal();
@@ -232,6 +236,7 @@ public class GrammaticalAnalysis {
             terminalWord = terminalWords.get(index);
         }
         terminalWord = terminalWords.get(index);
+        index += 1;
         if (!terminalWord.getWordName().equals(";") || !terminalWord.getWordType().equals("SEMICN")) {
             index = start;
             return null;
@@ -297,8 +302,9 @@ public class GrammaticalAnalysis {
         TerminalWord terminalWord;
         NonTerminalWord nonTerminalWord;
         terminalWord = terminalWords.get(index);
-        if (terminalWord.getWordName().equals("{") && terminalWord.getWordType().equals("RBRACE")) {
+        if (terminalWord.getWordName().equals("{") && terminalWord.getWordType().equals("LBRACE")) {
             index += 1;
+            initVal.add(terminalWord);
             nonTerminalWord = InitVal();
             if (nonTerminalWord != null) {
                 initVal.add(nonTerminalWord);
@@ -506,7 +512,7 @@ public class GrammaticalAnalysis {
                 funcFParam.add(nonTerminalWord);
                 terminalWord = terminalWords.get(index);
                 index += 1;
-                if (terminalWord.getWordName().equals("]") && terminalWord.getWordType().equals("RBRACK")) {
+                if (!terminalWord.getWordName().equals("]") || !terminalWord.getWordType().equals("RBRACK")) {
                     index = start;
                     return null;
                 }
@@ -594,6 +600,7 @@ public class GrammaticalAnalysis {
                 index = start;
                 return null;
             }
+            stmt.add(nonTerminalWord);
             terminalWord = terminalWords.get(index);
             if (terminalWord.getWordName().equals("else") && terminalWord.getWordType().equals("ELSETK")) {
                 index += 1;
@@ -634,6 +641,7 @@ public class GrammaticalAnalysis {
                 index = start;
                 return null;
             }
+            stmt.add(nonTerminalWord);
             return stmt;
         } else if (terminalWord.getWordName().equals("break") && terminalWord.getWordType().equals("BREAKTK")) {
             index += 1;
@@ -718,13 +726,14 @@ public class GrammaticalAnalysis {
             return stmt;
         }
         nonTerminalWord = LVal();
-        if (nonTerminalWord != null) {
+        while (nonTerminalWord != null) {
             stmt.add(nonTerminalWord);
             terminalWord = terminalWords.get(index);
             index += 1;
             if (!terminalWord.getWordName().equals("=") || !terminalWord.getWordType().equals("ASSIGN")) {
                 index = start;
-                return null;
+                stmt.remove();
+                break;
             }
             stmt.add(terminalWord);
             nonTerminalWord = Exp();
@@ -759,6 +768,7 @@ public class GrammaticalAnalysis {
                 return null;
             }
             stmt.add(terminalWord);
+            return stmt;
         }
         nonTerminalWord = Block();
         if (nonTerminalWord != null) {
@@ -816,8 +826,8 @@ public class GrammaticalAnalysis {
             index = start;
             return null;
         }
-        terminalWord = terminalWords.get(index);
         lVal.add(terminalWord);
+        terminalWord = terminalWords.get(index);
         while (terminalWord.getWordName().equals("[") && terminalWord.getWordType().equals("LBRACK")) {
             index += 1;
             lVal.add(terminalWord);
@@ -834,6 +844,7 @@ public class GrammaticalAnalysis {
                 return null;
             }
             lVal.add(terminalWord);
+            terminalWord = terminalWords.get(index);
         }
         return lVal;
     }
@@ -894,17 +905,16 @@ public class GrammaticalAnalysis {
         int start = index;
         NonTerminalWord nonTerminalWord;
         TerminalWord terminalWord;
+        TerminalWord terminalWord2;
         terminalWord = terminalWords.get(index);
-        if (terminalWord.getWordType().equals("IDENFR")) {
+        terminalWord2 = terminalWords.get(index + 1);
+        // 这里选择看两步
+        if (terminalWord.getWordType().equals("IDENFR")
+                && terminalWord2.getWordName().equals("(") && terminalWord2.getWordType().equals("LPARENT")) {
             index += 1;
             unaryExp.add(terminalWord);
-            terminalWord = terminalWords.get(index);
             index += 1;
-            if (!terminalWord.getWordName().equals("(") || !terminalWord.getWordType().equals("LPARENT")) {
-                index = start;
-                return null;
-            }
-            unaryExp.add(terminalWord);
+            unaryExp.add(terminalWord2);
             nonTerminalWord = FuncRParams();
             if (nonTerminalWord != null) {
                 unaryExp.add(nonTerminalWord);
@@ -963,6 +973,7 @@ public class GrammaticalAnalysis {
             index = start;
             return null;
         }
+        funcRParams.add(nonTerminalWord);
         terminalWord = terminalWords.get(index);
         while (terminalWord.getWordName().equals(",") && terminalWord.getWordType().equals("COMMA")) {
             index += 1;
@@ -1077,7 +1088,7 @@ public class GrammaticalAnalysis {
         eqExp.add(nonTerminalWord);
         terminalWord = terminalWords.get(index);
         while (terminalWord.getWordName().equals("==") && terminalWord.getWordType().equals("EQL")
-                || terminalWord.getWordName().equals("!=") && terminalWord.getWordType().equals("RBRACE")
+                || terminalWord.getWordName().equals("!=") && terminalWord.getWordType().equals("NEQ")
         ) {
             index += 1;
             eqExp.add(terminalWord);
@@ -1124,7 +1135,7 @@ public class GrammaticalAnalysis {
         int start = index;
         NonTerminalWord nonTerminalWord;
         TerminalWord terminalWord;
-        nonTerminalWord = LOrExp();
+        nonTerminalWord = LAndExp();
         if (nonTerminalWord == null) {
             index = start;
             return null;
