@@ -1,20 +1,25 @@
-import sun.util.resources.no.CurrencyNames_no_NO;
-
 import java.util.ArrayList;
 
 public class GrammaticalAnalysis {
     private final ArrayList<TerminalWord> terminalWords;
     private int index;
     private NonTerminalWord compUnit;
+    private final ErrorArrayList errorArrayList;
+    private boolean existError = false;
 
-    public GrammaticalAnalysis(ArrayList<TerminalWord> terminalWords) {
+    public GrammaticalAnalysis(ArrayList<TerminalWord> terminalWords, ErrorArrayList errorArrayList) {
         this.terminalWords = new ArrayList<>(terminalWords);
         this.index = 0;
         this.compUnit = new NonTerminalWord("<CompUnit>");
+        this.errorArrayList = errorArrayList;
     }
 
     public NonTerminalWord getCompUnit() {
         return compUnit;
+    }
+
+    public boolean getExistError() {
+        return existError;
     }
 
     public void analyse() {
@@ -93,11 +98,21 @@ public class GrammaticalAnalysis {
         }
         terminalWord = terminalWords.get(index);
         index += 1;
+        boolean error = false;
+        String col = "";
+        String row = "";
         if (!terminalWord.getWordName().equals(";") || !terminalWord.getWordType().equals("SEMICN")) {
-            index = start;
-            return null;
+            error = true;
+            index -= 1;
+            col = terminalWords.get(index - 1).getCol();
+            row = terminalWords.get(index - 1).getRow();
+            terminalWord = new TerminalWord("SEMICN", ";", col, row);
         }
         constDecl.add(terminalWord);
+        if (error) {
+            existError = true;
+            errorArrayList.add(col, row, "i");
+        }
         return constDecl;
     }
 
@@ -139,11 +154,21 @@ public class GrammaticalAnalysis {
             constDef.add(nonTerminalWord);
             terminalWord = terminalWords.get(index);
             index += 1;
+            boolean error = false;
+            String col = "";
+            String row = "";
             if (!terminalWord.getWordName().equals("]") || !terminalWord.getWordType().equals("RBRACK")) {
-                index = start;
-                return null;
+                error = true;
+                index -= 1;
+                col = terminalWords.get(index - 1).getCol();
+                row = terminalWords.get(index - 1).getRow();
+                terminalWord = new TerminalWord("RBRACK", "]", col, row);
             }
             constDef.add(terminalWord);
+            if (error) {
+                existError = true;
+                errorArrayList.add(col, row, "k");
+            }
             terminalWord = terminalWords.get(index);
         }
         terminalWord = terminalWords.get(index);
@@ -237,11 +262,27 @@ public class GrammaticalAnalysis {
         }
         terminalWord = terminalWords.get(index);
         index += 1;
+        boolean error = false;
+        String col = "";
+        String row = "";
         if (!terminalWord.getWordName().equals(";") || !terminalWord.getWordType().equals("SEMICN")) {
-            index = start;
-            return null;
+            // 此处是用于和函数声明相区别
+            if (!terminalWord.getWordName().equals("(")) {
+                error = true;
+                index -= 1;
+                col = terminalWords.get(index - 1).getCol();
+                row = terminalWords.get(index - 1).getRow();
+                terminalWord = new TerminalWord("SEMICN", ";", col, row);
+            } else {
+                index = start;
+                return null;
+            }
         }
         varDecl.add(terminalWord);
+        if (error) {
+            existError = true;
+            errorArrayList.add(col, row, "i");
+        }
         return varDecl;
     }
 
@@ -270,11 +311,21 @@ public class GrammaticalAnalysis {
             varDef.add(nonTerminalWord);
             terminalWord = terminalWords.get(index);
             index += 1;
+            boolean error = false;
+            String col = "";
+            String row = "";
             if (!terminalWord.getWordName().equals("]") || !terminalWord.getWordType().equals("RBRACK")) {
-                index = start;
-                return null;
+                error = true;
+                index -= 1;
+                col = terminalWords.get(index - 1).getCol();
+                row = terminalWords.get(index - 1).getRow();
+                terminalWord = new TerminalWord("RBRACK", "]", col, row);
             }
             varDef.add(terminalWord);
+            if (error) {
+                existError = true;
+                errorArrayList.add(col, row, "k");
+            }
             terminalWord = terminalWords.get(index);
         }
         int start2 = index;
@@ -371,11 +422,21 @@ public class GrammaticalAnalysis {
         }
         terminalWord = terminalWords.get(index);
         index += 1;
+        boolean error = false;
+        String col = "";
+        String row = "";
         if (!terminalWord.getWordName().equals(")") || !terminalWord.getWordType().equals("RPARENT")) {
-            index = start;
-            return null;
+            error = true;
+            index -= 1;
+            col = terminalWords.get(index - 1).getCol();
+            row = terminalWords.get(index - 1).getRow();
+            terminalWord = new TerminalWord("RPARENT", ")", col, row);
         }
         funcDef.add(terminalWord);
+        if (error) {
+            existError = true;
+            errorArrayList.add(col, row, "j");
+        }
         nonTerminalWord = Block();
         if (nonTerminalWord == null) {
             index = start;
@@ -495,11 +556,21 @@ public class GrammaticalAnalysis {
             funcFParam.add(terminalWord);
             terminalWord = terminalWords.get(index);
             index += 1;
+            boolean error = false;
+            String col = "";
+            String row = "";
             if (!terminalWord.getWordName().equals("]") || !terminalWord.getWordType().equals("RBRACK")) {
-                index = start;
-                return null;
+                error = true;
+                index -= 1;
+                col = terminalWords.get(index - 1).getCol();
+                row = terminalWords.get(index - 1).getRow();
+                terminalWord = new TerminalWord("RBRACK", "]", col, row);
             }
             funcFParam.add(terminalWord);
+            if (error) {
+                existError = true;
+                errorArrayList.add(col, row, "k");
+            }
             terminalWord = terminalWords.get(index);
             while (terminalWord.getWordName().equals("[") && terminalWord.getWordType().equals("LBRACK")) {
                 index += 1;
@@ -590,11 +661,21 @@ public class GrammaticalAnalysis {
             stmt.add(nonTerminalWord);
             terminalWord = terminalWords.get(index);
             index += 1;
+            boolean error = false;
+            String col = "";
+            String row = "";
             if (!terminalWord.getWordName().equals(")") || !terminalWord.getWordType().equals("RPARENT")) {
-                index = start;
-                return null;
+                error = true;
+                index -= 1;
+                col = terminalWords.get(index - 1).getCol();
+                row = terminalWords.get(index - 1).getRow();
+                terminalWord = new TerminalWord("RPARENT", ")", col, row);
             }
             stmt.add(terminalWord);
+            if (error) {
+                existError = true;
+                errorArrayList.add(col, row, "j");
+            }
             nonTerminalWord = Stmt();
             if (nonTerminalWord == null) {
                 index = start;
@@ -631,11 +712,21 @@ public class GrammaticalAnalysis {
             stmt.add(nonTerminalWord);
             terminalWord = terminalWords.get(index);
             index += 1;
+            boolean error = false;
+            String col = "";
+            String row = "";
             if (!terminalWord.getWordName().equals(")") || !terminalWord.getWordType().equals("RPARENT")) {
-                index = start;
-                return null;
+                error = true;
+                index -= 1;
+                col = terminalWords.get(index - 1).getCol();
+                row = terminalWords.get(index - 1).getRow();
+                terminalWord = new TerminalWord("RPARENT", ")", col, row);
             }
             stmt.add(terminalWord);
+            if (error) {
+                existError = true;
+                errorArrayList.add(col, row, "j");
+            }
             nonTerminalWord = Stmt();
             if (nonTerminalWord == null) {
                 index = start;
@@ -643,42 +734,34 @@ public class GrammaticalAnalysis {
             }
             stmt.add(nonTerminalWord);
             return stmt;
-        } else if (terminalWord.getWordName().equals("break") && terminalWord.getWordType().equals("BREAKTK")) {
+        } else if ((terminalWord.getWordName().equals("break") && terminalWord.getWordType().equals("BREAKTK"))
+                || (terminalWord.getWordName().equals("continue") && terminalWord.getWordType().equals("CONTINUETK"))
+                || (terminalWord.getWordName().equals("return") && terminalWord.getWordType().equals("RETURNTK"))) {
             index += 1;
             stmt.add(terminalWord);
-            terminalWord = terminalWords.get(index);
-            index += 1;
-            if (!terminalWord.getWordName().equals(";") || !terminalWord.getWordType().equals("SEMICN")) {
-                index = start;
-                return null;
-            }
-            stmt.add(terminalWord);
-            return stmt;
-        } else if (terminalWord.getWordName().equals("continue") && terminalWord.getWordType().equals("CONTINUETK")) {
-            index += 1;
-            stmt.add(terminalWord);
-            terminalWord = terminalWords.get(index);
-            index += 1;
-            if (!terminalWord.getWordName().equals(";") || !terminalWord.getWordType().equals("SEMICN")) {
-                index = start;
-                return null;
-            }
-            stmt.add(terminalWord);
-            return stmt;
-        } else if (terminalWord.getWordName().equals("return") && terminalWord.getWordType().equals("RETURNTK")) {
-            index += 1;
-            stmt.add(terminalWord);
-            nonTerminalWord = Exp();
-            if (nonTerminalWord != null) {
-                stmt.add(nonTerminalWord);
+            if (terminalWord.getWordName().equals("return") && terminalWord.getWordType().equals("RETURNTK")) {
+                nonTerminalWord = Exp();
+                if (nonTerminalWord != null) {
+                    stmt.add(nonTerminalWord);
+                }
             }
             terminalWord = terminalWords.get(index);
             index += 1;
+            boolean error = false;
+            String col = "";
+            String row = "";
             if (!terminalWord.getWordName().equals(";") || !terminalWord.getWordType().equals("SEMICN")) {
-                index = start;
-                return null;
+                error = true;
+                index -= 1;
+                col = terminalWords.get(index - 1).getCol();
+                row = terminalWords.get(index - 1).getRow();
+                terminalWord = new TerminalWord("SEMICN", ";", col, row);
             }
             stmt.add(terminalWord);
+            if (error) {
+                existError = true;
+                errorArrayList.add(col, row, "i");
+            }
             return stmt;
         } else if (terminalWord.getWordName().equals("printf") && terminalWord.getWordType().equals("PRINTFTK")) {
             index += 1;
@@ -718,11 +801,21 @@ public class GrammaticalAnalysis {
             stmt.add(terminalWord);
             terminalWord = terminalWords.get(index);
             index += 1;
+            boolean error = false;
+            String col = "";
+            String row = "";
             if (!terminalWord.getWordName().equals(";") || !terminalWord.getWordType().equals("SEMICN")) {
-                index = start;
-                return null;
+                error = true;
+                index -= 1;
+                col = terminalWords.get(index - 1).getCol();
+                row = terminalWords.get(index - 1).getRow();
+                terminalWord = new TerminalWord("SEMICN", ";", col, row);
             }
             stmt.add(terminalWord);
+            if (error) {
+                existError = true;
+                errorArrayList.add(col, row, "i");
+            }
             return stmt;
         }
         nonTerminalWord = LVal();
@@ -763,11 +856,21 @@ public class GrammaticalAnalysis {
             }
             terminalWord = terminalWords.get(index);
             index += 1;
+            boolean error = false;
+            String col = "";
+            String row = "";
             if (!terminalWord.getWordName().equals(";") || !terminalWord.getWordType().equals("SEMICN")) {
-                index = start;
-                return null;
+                error = true;
+                index -= 1;
+                col = terminalWords.get(index - 1).getCol();
+                row = terminalWords.get(index - 1).getRow();
+                terminalWord = new TerminalWord("SEMICN", ";", col, row);
             }
             stmt.add(terminalWord);
+            if (error) {
+                existError = true;
+                errorArrayList.add(col, row, "i");
+            }
             return stmt;
         }
         nonTerminalWord = Block();
@@ -778,15 +881,34 @@ public class GrammaticalAnalysis {
         nonTerminalWord = Exp();
         if (nonTerminalWord != null) {
             stmt.add(nonTerminalWord);
+            terminalWord = terminalWords.get(index);
+            index += 1;
+            boolean error = false;
+            String col = "";
+            String row = "";
+            if (!terminalWord.getWordName().equals(";") || !terminalWord.getWordType().equals("SEMICN")) {
+                error = true;
+                index -= 1;
+                col = terminalWords.get(index - 1).getCol();
+                row = terminalWords.get(index - 1).getRow();
+                terminalWord = new TerminalWord("SEMICN", ";", col, row);
+            }
+            stmt.add(terminalWord);
+            if (error) {
+                existError = true;
+                errorArrayList.add(col, row, "i");
+            }
+            return stmt;
+        } else {
+            terminalWord = terminalWords.get(index);
+            index += 1;
+            if (!terminalWord.getWordName().equals(";") || !terminalWord.getWordType().equals("SEMICN")) {
+                index = start;
+                return null;
+            }
+            stmt.add(terminalWord);
+            return stmt;
         }
-        terminalWord = terminalWords.get(index);
-        index += 1;
-        if (!terminalWord.getWordName().equals(";") || !terminalWord.getWordType().equals("SEMICN")) {
-            index = start;
-            return null;
-        }
-        stmt.add(terminalWord);
-        return stmt;
     }
 
     private NonTerminalWord Exp() {
@@ -839,11 +961,21 @@ public class GrammaticalAnalysis {
             lVal.add(nonTerminalWord);
             terminalWord = terminalWords.get(index);
             index += 1;
+            boolean error = false;
+            String col = "";
+            String row = "";
             if (!terminalWord.getWordName().equals("]") || !terminalWord.getWordType().equals("RBRACK")) {
-                index = start;
-                return null;
+                error = true;
+                index -= 1;
+                col = terminalWords.get(index - 1).getCol();
+                row = terminalWords.get(index - 1).getRow();
+                terminalWord = new TerminalWord("RBRACK", "]", col, row);
             }
             lVal.add(terminalWord);
+            if (error) {
+                existError = true;
+                errorArrayList.add(col, row, "k");
+            }
             terminalWord = terminalWords.get(index);
         }
         return lVal;
@@ -921,11 +1053,21 @@ public class GrammaticalAnalysis {
             }
             terminalWord = terminalWords.get(index);
             index += 1;
+            boolean error = false;
+            String col = "";
+            String row = "";
             if (!terminalWord.getWordName().equals(")") || !terminalWord.getWordType().equals("RPARENT")) {
-                index = start;
-                return null;
+                error = true;
+                index -= 1;
+                col = terminalWords.get(index - 1).getCol();
+                row = terminalWords.get(index - 1).getRow();
+                terminalWord = new TerminalWord("RPARENT", ")", col, row);
             }
             unaryExp.add(terminalWord);
+            if (error) {
+                existError = true;
+                errorArrayList.add(col, row, "j");
+            }
             return unaryExp;
         }
         nonTerminalWord = PrimaryExp();

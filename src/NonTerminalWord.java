@@ -22,6 +22,23 @@ public class NonTerminalWord implements Word {
         components.remove(components.size() - 1);
     }
 
+    public ArrayList<Word> getComponents() {
+        return new ArrayList<>(components);
+    }
+
+    public String toString() {
+        StringBuilder string = new StringBuilder();
+        for (Word word : components) {
+            if (word instanceof TerminalWord) {
+                string.append(((TerminalWord) word).getWordName());
+                string.append(" ");
+            } else {
+                string.append(((NonTerminalWord) word).toString());
+            }
+        }
+        return string.toString();
+    }
+
     public void print(BufferedWriter bw) {
         for (int i = 0; i < components.size(); i++) {
             components.get(i).print(bw);

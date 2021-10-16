@@ -49,9 +49,10 @@ public class LexicalAnalysis {
         }
     };
     private ArrayList<String> sortedKey;
+    private ErrorArrayList errorArrayList;
+    private boolean existError;
 
-
-    public LexicalAnalysis(ArrayList<String> text) {
+    public LexicalAnalysis(ArrayList<String> text, ErrorArrayList errorArrayList) {
         this.text = new ArrayList<>();
         this.text.addAll(text);
         this.row = 1;
@@ -63,6 +64,8 @@ public class LexicalAnalysis {
                 return Integer.compare(s2.length(), s1.length());
             }
         });
+        this.existError = false;
+        this.errorArrayList = errorArrayList;
     }
 
     private void preProcess() {
@@ -111,9 +114,10 @@ public class LexicalAnalysis {
                         }
                         index += 1;
                     }
-                    for (int i = start; i <= index; i++) {
+                    for (int i = start; i < index; i++) {
                         stringBuilder.replace(i, i + 1, " ");
                     }
+                    stringBuilder.replace(index,index+1,"\n");
                     continue;
                 }
             }
@@ -188,9 +192,11 @@ public class LexicalAnalysis {
                 row = start;
                 isIdentifier = false;
             } else {
-                String[] ss = new String[2];
+                String[] ss = new String[4];
                 ss[0] = "IDENFR";
                 ss[1] = identifier;
+                ss[2] = "" + col;
+                ss[3] = "" + row;
                 lexicalAnalysisResult.add(ss);
                 isIdentifier = true;
             }
@@ -207,9 +213,11 @@ public class LexicalAnalysis {
         c = string.charAt(row - 1);
         if (c == '0') {
             row += 1;
-            String[] ss = new String[2];
+            String[] ss = new String[4];
             ss[0] = "INTCON";
             ss[1] = "0";
+            ss[2] = "" + col;
+            ss[3] = "" + row;
             lexicalAnalysisResult.add(ss);
             isIntConst = true;
         } else if (Character.isDigit(c)) {
@@ -222,9 +230,11 @@ public class LexicalAnalysis {
                 row += 1;
             }
             String intConst = string.substring(start - 1, row - 1);
-            String[] ss = new String[2];
+            String[] ss = new String[4];
             ss[0] = "INTCON";
             ss[1] = intConst;
+            ss[2] = "" + col;
+            ss[3] = "" + row;
             lexicalAnalysisResult.add(ss);
             isIntConst = true;
         } else {
@@ -234,44 +244,41 @@ public class LexicalAnalysis {
     }
 
     private boolean isFormatString(String string) {
-        boolean isFormatString = true;
+        boolean isFormatString = false;
         int start = row;
         char c;
         c = string.charAt(row - 1);
+        boolean error = false;
         if (c == '"') {
+            isFormatString = true;
             row += 1;
-            while (row <= string.length()) {
+            while (row <= string.length() && string.charAt(row - 1) != '"') {
                 c = string.charAt(row - 1);
                 if (c == '%') {
-                    if (row + 1 <= string.length() && string.charAt(row) == 'd') {
+                    if (string.charAt(row) == 'd') {
                         row += 2;
                     } else {
-                        isFormatString = false;
-                        break;
+                        row += 1;
+                        error = true;
                     }
                 } else if ((int) c >= 40 && (int) c <= 126 || (int) c == 32 || (int) c == 33 || c == '\n') {
                     row += 1;
                 } else {
-                    break;
-                }
-            }
-            if (isFormatString) {
-                if (row <= string.length() && string.charAt(row - 1) == '"') {
+                    error = true;
                     row += 1;
-                    String[] ss = new String[2];
-                    ss[0] = "STRCON";
-                    ss[1] = string.substring(start - 1, row - 1);
-                    lexicalAnalysisResult.add(ss);
-                } else {
-                    row = start;
-                    isFormatString = false;
                 }
-            } else {
-                row = start;
-                isFormatString = false;
             }
-        } else {
-            isFormatString = false;
+            row += 1;
+            String[] ss = new String[4];
+            ss[0] = "STRCON";
+            ss[1] = string.substring(start - 1, row - 1);
+            ss[2] = "" + col;
+            ss[3] = "" + row;
+            lexicalAnalysisResult.add(ss);
+            if (error) {
+                existError = true;
+                errorArrayList.add("" + col, "" + row, "a");
+            }
         }
         return isFormatString;
     }
@@ -281,9 +288,11 @@ public class LexicalAnalysis {
         for (String reversedWord : sortedKey) {
             if (substring.startsWith(reversedWord)) {
                 row += reversedWord.length();
-                String[] ss = new String[2];
+                String[] ss = new String[4];
                 ss[0] = reversedWord2type.get(reversedWord);
                 ss[1] = reversedWord;
+                ss[2] = "" + col;
+                ss[3] = "" + row;
                 lexicalAnalysisResult.add(ss);
                 return true;
             }
