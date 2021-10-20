@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.util.ArrayList;
+import java.util.HashSet;
 
 public class Compiler {
     public static void main(String[] args) throws IOException {
@@ -56,8 +57,12 @@ public class Compiler {
         if (errorPrint) {
             BufferedWriter bw2 = new BufferedWriter(new OutputStreamWriter(new FileOutputStream("error.txt")));
             ArrayList<String[]> errors = errorArrayList.getErrors();
+            HashSet<String> hashSet = new HashSet<>();
             for (String[] strings1 : errors) {
-                bw2.write(strings1[0] + " " + strings1[2] + "\n");
+                if (!hashSet.contains(strings1[0] + " " + strings1[2] + "\n")) {
+                    bw2.write(strings1[0] + " " + strings1[2] + "\n");
+                    hashSet.add(strings1[0] + " " + strings1[2] + "\n");
+                }
             }
             bw2.close();
         }

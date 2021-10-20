@@ -104,16 +104,18 @@ public class ErrorAnalysis {
         IdentSymbol identSymbol = symbolTable.searchIdentInCurrentLayer(name);
         if (identSymbol != null) {
             errorArrayList.add(ident.getCol(), ident.getRow(), "b");
-        } else {
-            identSymbol = new IdentSymbol(name, true);
-            //TODO 目前只关心维数，每一维具体是什么暂时搁置
-            for (int i = 0; i < numberOfDimensions; i++) {
-                NonTerminalWord constExp = (NonTerminalWord) components.get(2 + 3 * i);
-                Integer dimension = calculateExp(constExp.toString());
-                identSymbol.add(dimension);
-            }
-            symbolTable.add(identSymbol);
         }
+        identSymbol = new IdentSymbol(name, true);
+        //TODO 目前只关心维数，每一维具体是什么暂时搁置
+        for (int i = 0; i < numberOfDimensions; i++) {
+            NonTerminalWord constExp = (NonTerminalWord) components.get(2 + 3 * i);
+            analyse(constExp);
+            Integer dimension = calculateExp(constExp.toString());
+            identSymbol.add(dimension);
+        }
+        NonTerminalWord lastWord = (NonTerminalWord) components.get(components.size() - 1);
+        analyse(lastWord);
+        symbolTable.add(identSymbol);
     }
 
     private void checkVarDef(NonTerminalWord varDef) {
@@ -132,17 +134,19 @@ public class ErrorAnalysis {
         IdentSymbol identSymbol = symbolTable.searchIdentInCurrentLayer(name);
         if (identSymbol != null) {
             errorArrayList.add(ident.getCol(), ident.getRow(), "b");
-        } else {
-            identSymbol = new IdentSymbol(name, false);
-            //TODO 目前只关心维数，每一维具体是什么暂时搁置
-            for (int i = 0; i < numberOfDimensions; i++) {
-                NonTerminalWord constExp = (NonTerminalWord) components.get(2 + 3 * i);
-                Integer dimension = calculateExp(constExp.toString());
-
-                identSymbol.add(dimension);
-            }
-            symbolTable.add(identSymbol);
         }
+        identSymbol = new IdentSymbol(name, false);
+        //TODO 目前只关心维数，每一维具体是什么暂时搁置
+        for (int i = 0; i < numberOfDimensions; i++) {
+            NonTerminalWord constExp = (NonTerminalWord) components.get(2 + 3 * i);
+            analyse(constExp);
+            Integer dimension = calculateExp(constExp.toString());
+            identSymbol.add(dimension);
+        }
+        if (lastWord instanceof NonTerminalWord) {
+            analyse(lastWord);
+        }
+        symbolTable.add(identSymbol);
     }
 
     private void checkFuncDef(NonTerminalWord funcDef) {
@@ -163,13 +167,12 @@ public class ErrorAnalysis {
         //查看是否有同名函数
         if (funcSymbol != null) {
             errorArrayList.add(ident.getCol(), ident.getRow(), "b");
-        } else {
-            funcSymbol = new FuncSymbol(funcName, returnTypeName);
-            for (IdentSymbol parameterSymbol : parameterSymbols) {
-                funcSymbol.add(parameterSymbol);
-            }
-            symbolTable.add(funcSymbol);
         }
+        funcSymbol = new FuncSymbol(funcName, returnTypeName);
+        for (IdentSymbol parameterSymbol : parameterSymbols) {
+            funcSymbol.add(parameterSymbol);
+        }
+        symbolTable.add(funcSymbol);
         //参数压栈
         symbolTable.addNewLayer();
         for (IdentSymbol parameterSymbol : parameterSymbols) {
@@ -241,6 +244,9 @@ public class ErrorAnalysis {
         if (identSymbol == null) {
             errorArrayList.add(ident.getCol(), ident.getRow(), "c");
         }
+        for (int i = 1; i < components.size(); i++) {
+            analyse(components.get(i));
+        }
     }
 
     private void checkUnaryExp(NonTerminalWord unaryExp) {
@@ -282,8 +288,8 @@ public class ErrorAnalysis {
                                     break;
                                 }
                                 boolean bool = true;
-                                for (int j = 0; j < expType.size(); j++) {
-                                    if (expType.dimension(j) != identSymbol.dimension(j)) {
+                                for (int j = 1; j < expType.size(); j++) {
+                                    if (!expType.dimension(j).equals(identSymbol.dimension(j))) {
                                         bool = false;
                                         break;
                                     }
@@ -348,15 +354,15 @@ public class ErrorAnalysis {
         ArrayList<Word> components = primaryExp.getComponents();
         if (components.get(0) instanceof TerminalWord) {
             TerminalWord terminalWord = (TerminalWord) components.get(0);
-            if (terminalWord.getWordName().equals("(")) {
-                NonTerminalWord exp = (NonTerminalWord) components.get(1);
-                return getExpType(exp);
-            } else {
-                return new ExpType("int");
-            }
+            NonTerminalWord exp = (NonTerminalWord) components.get(1);
+            return getExpType(exp);
         } else {
-            NonTerminalWord lVal = (NonTerminalWord) components.get(0);
-            return getLValType(lVal);
+            NonTerminalWord nonTerminalWord = (NonTerminalWord) components.get(0);
+            if (nonTerminalWord.getType().equals("<Number>")) {
+                return new ExpType("int");
+            } else {
+                return getLValType(nonTerminalWord);
+            }
         }
     }
 
@@ -426,8 +432,14 @@ public class ErrorAnalysis {
                     }
                 }
             }
+            if (nonTerminalWord.getType().equals("<Block>")) {
+                symbolTable.addNewLayer();
+            }
             for (Word word : components) {
                 analyse(word);
+            }
+            if (nonTerminalWord.getType().equals("<Block>")) {
+                symbolTable.removeCurrentLayer();
             }
         }
     }

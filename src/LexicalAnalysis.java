@@ -117,7 +117,7 @@ public class LexicalAnalysis {
                     for (int i = start; i < index; i++) {
                         stringBuilder.replace(i, i + 1, " ");
                     }
-                    stringBuilder.replace(index,index+1,"\n");
+                    stringBuilder.replace(index, index + 1, "\n");
                     continue;
                 }
             }
@@ -261,7 +261,12 @@ public class LexicalAnalysis {
                         row += 1;
                         error = true;
                     }
-                } else if ((int) c >= 40 && (int) c <= 126 || (int) c == 32 || (int) c == 33 || c == '\n') {
+                } else if (((int) c >= 40 && (int) c <= 126 || (int) c == 32 || (int) c == 33) && c != '\\') {
+                    row += 1;
+                } else if (c == '\\') {
+                    if (string.charAt(row) != 'n') {
+                        error = true;
+                    }
                     row += 1;
                 } else {
                     error = true;

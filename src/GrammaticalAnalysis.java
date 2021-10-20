@@ -845,11 +845,21 @@ public class GrammaticalAnalysis {
                 stmt.add(terminalWord);
                 terminalWord = terminalWords.get(index);
                 index += 1;
+                boolean error = false;
+                String col = "";
+                String row = "";
                 if (!terminalWord.getWordName().equals(")") || !terminalWord.getWordType().equals("RPARENT")) {
-                    index = start;
-                    return null;
+                    error = true;
+                    index -= 1;
+                    col = terminalWords.get(index - 1).getCol();
+                    row = terminalWords.get(index - 1).getRow();
+                    terminalWord = new TerminalWord("RPARENT", ")", col, row);
                 }
                 stmt.add(terminalWord);
+                if (error) {
+                    existError = true;
+                    errorArrayList.add(col, row, "i");
+                }
             } else {
                 index = start;
                 return null;
