@@ -11,8 +11,10 @@ import java.util.HashSet;
 
 public class Compiler {
     public static void main(String[] args) throws IOException {
-        final boolean grammaticalAnalysisPrint = false;
-        final boolean errorPrint = true;
+        final boolean grammaticalAnalysisPrint = true;
+        final boolean errorPrint = false;
+        final boolean midCodePrint = true;
+        final boolean finalCodePrint = true;
         ErrorArrayList errorArrayList = new ErrorArrayList();
         ArrayList<String> strings = new ArrayList<>();
         try {
@@ -44,7 +46,6 @@ public class Compiler {
         GrammaticalAnalysis grammaticalAnalysis = new GrammaticalAnalysis(terminalWords, errorArrayList);
         grammaticalAnalysis.analyse();
         NonTerminalWord compUnit = grammaticalAnalysis.getCompUnit();
-
         if (grammaticalAnalysisPrint) {
             BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(new FileOutputStream("output.txt")));
             compUnit.print(bw);
@@ -53,10 +54,9 @@ public class Compiler {
 
         ErrorAnalysis errorAnalysis = new ErrorAnalysis(compUnit, errorArrayList);
         errorAnalysis.analyse();
-
+        ArrayList<String[]> errors = errorArrayList.getErrors();
         if (errorPrint) {
             BufferedWriter bw2 = new BufferedWriter(new OutputStreamWriter(new FileOutputStream("error.txt")));
-            ArrayList<String[]> errors = errorArrayList.getErrors();
             HashSet<String> hashSet = new HashSet<>();
             for (String[] strings1 : errors) {
                 if (!hashSet.contains(strings1[0] + " " + strings1[2] + "\n")) {
@@ -66,5 +66,27 @@ public class Compiler {
             }
             bw2.close();
         }
+
+        MidCodeGenerator midCodeGenerator = new MidCodeGenerator(compUnit, false);
+        midCodeGenerator.analyse();
+        ArrayList<String> midCodes = midCodeGenerator.getMidCodes();
+        if (midCodePrint) {
+            write(midCodes,"midCode.txt");
+        }
+
+        FinalCodeGenerator finalCodeGenerator = new FinalCodeGenerator(midCodes);
+        finalCodeGenerator.generateFinalCodes();
+        ArrayList<String> finalCodes = finalCodeGenerator.getFinalCodes();
+        if (finalCodePrint) {
+            write(finalCodes, "mips.txt");
+        }
+    }
+
+    public static void write(ArrayList<String> strings, String path) throws IOException {
+        BufferedWriter bw2 = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(path)));
+        for (String string : strings) {
+            bw2.write(string + "\n");
+        }
+        bw2.close();
     }
 }

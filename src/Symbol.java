@@ -14,4 +14,6 @@ public class Symbol {
     public String getType() {
         return type;
     }
+
+
 }

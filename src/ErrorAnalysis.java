@@ -470,8 +470,6 @@ public class ErrorAnalysis {
     }
 
     public static void main(String[] args) {
-        ArrayList<String> strings = new ArrayList<>();
-        String a = "\\n";
-        System.out.println(a.length());
+
     }
 }

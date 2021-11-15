@@ -3,13 +3,42 @@ import java.util.ArrayList;
 public class SymbolTable {
     private final ArrayList<Symbol> symbols = new ArrayList<>();
     private final ArrayList<Integer> indexes = new ArrayList<>();
+    private ArrayList<Integer> spaces = new ArrayList<>(); // 每一个运行栈目前开辟空间的大小
+    private ArrayList<Integer> ras = new ArrayList<>(); // 每一个运行栈对应的返回地址ra的值
+
+
+    public int getCurrentRaAddress() {
+        return ras.get(ras.size() - 1);
+    }
+
+    public int getCurrentSpace() {
+        return spaces.get(spaces.size() - 1);
+    }
 
     public void add(Symbol symbol) {
         symbols.add(symbol);
+        int space = spaces.get(spaces.size() - 1);
+        if (symbol instanceof IdentSymbol) {
+            IdentSymbol identSymbol = (IdentSymbol) symbol;
+            if (identSymbol.numberOfDimensions() == 0) {
+                space += 4;
+                if (identSymbol.getName().equals("$ra")) {
+                    ras.set(ras.size() - 1, spaces.get(spaces.size() - 1) + 4);
+                }
+            } else if (identSymbol.numberOfDimensions() == 1) {
+                space += 4 * identSymbol.dimension(0);
+            } else {
+                space += 4 * (identSymbol.dimension(0) * identSymbol.dimension(1));
+            }
+            identSymbol.setAddress(space);
+        }
+        spaces.set(spaces.size() - 1, space);
     }
 
     public void addNewLayer() {
         indexes.add(symbols.size());
+        spaces.add(0);
+        ras.add(0);
     }
 
     public void removeCurrentLayer() {
@@ -20,6 +49,8 @@ public class SymbolTable {
             symbols.remove(symbols.get(length));
             length -= 1;
         }
+        spaces.remove(spaces.size() - 1);
+        ras.remove(ras.size() - 1);
     }
 
     public IdentSymbol searchIdentInCurrentLayer(String name) {
@@ -61,5 +92,23 @@ public class SymbolTable {
             }
         }
         return null;
+    }
+
+    public int getIdentAddress(String name) {
+        int offset = 0;
+        for (int i = symbols.size() - 1; i >= 0; i--) {
+            Symbol symbol = symbols.get(i);
+            if (symbol instanceof IdentSymbol) {
+                IdentSymbol identSymbol = (IdentSymbol) symbol;
+                if (identSymbol.numberOfDimensions() == 0) {
+                    offset += 4;
+                } else if (identSymbol.numberOfDimensions() == 1) {
+                    offset += 4 * identSymbol.dimension(0);
+                } else {
+                    offset += 4 * (identSymbol.dimension(0) * identSymbol.dimension(1));
+                }
+            }
+        }
+        return offset;
     }
 }
