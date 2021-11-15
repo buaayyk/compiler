@@ -2,6 +2,8 @@ import javax.script.ScriptEngine;
 import javax.script.ScriptEngineManager;
 import javax.script.ScriptException;
 import java.util.ArrayList;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class MidCodeGenerator {
     private final NonTerminalWord compUnit;
@@ -79,6 +81,7 @@ public class MidCodeGenerator {
         symbolTable.removeCurrentLayer();
     }
 
+
     private void analyseConstDef(NonTerminalWord constDef) {
         ArrayList<Word> components = constDef.getComponents();
         TerminalWord ident = (TerminalWord) components.get(0);
@@ -88,7 +91,10 @@ public class MidCodeGenerator {
         if (dimensions == 0) {
             //普通变量
             midCodes.add("const int " + ident.getWordName());
-            midCodes.add(ident.getWordName() + " = " + calculateExp(constInitVal.toString()));
+            NonTerminalWord exp = (NonTerminalWord) constInitVal.getComponents().get(0);
+            String s = analyseExp(exp);
+            midCodes.add(ident.getWordName() + " = " + s);
+
         } else {
             NonTerminalWord constExp1 = (NonTerminalWord) components.get(2);
             int d1 = calculateExp(constExp1.toString()); // 第一维
@@ -97,45 +103,56 @@ public class MidCodeGenerator {
             int j;
             if (dimensions == 1) {
                 //一维数组
-                midCodes.add("arr int " + ident.getWordName() + " [" + d1 + "]");
-                String[] expList = constInitVal.toString().split("[,{}]");
+                midCodes.add("arr int " + ident.getWordName() + "[" + d1 + "]");
                 i = 0;
-                for (String exp : expList) {
-                    Integer value = calculateExp(exp);
-                    if (value != null) {
-                        midCodes.add(ident.getWordName() + "[" + i + "]" + " = " + value);
+                for (Word word : constInitVal.getComponents()) {
+                    if (word instanceof NonTerminalWord) {
+                        NonTerminalWord exp =
+                                (NonTerminalWord) ((NonTerminalWord) word).getComponents().get(0);
+                        String s = analyseExp(exp);
+                        midCodes.add(ident.getWordName() + "[" + i + "]" + " = " + s);
                         i += 1;
+
                     }
                     if (i == d1) {
                         break;
                     }
                 }
+
             } else {
-                //二维数组
                 NonTerminalWord constExp2 = (NonTerminalWord) components.get(5);
-                int d2 = calculateExp(constExp2.toString()); // 第二维
+                int d2 = calculateExp(constExp2.toString());
                 identSymbol.add(d2);
-                midCodes.add("arr int " + ident.getWordName() + " [" + (d1 * d2) + "]");
-                String[] expList = constInitVal.toString().split("[,{}]");
-                i = j = 0;
-                for (String exp : expList) {
-                    Integer value = calculateExp(exp);
-                    if (value != null) {
-                        midCodes.add(ident.getWordName() + "[" + (i + d2 * j) + " = " + value);
-                        j += 1;
-                    }
-                    if (j == d2) {
-                        i += 1;
+                midCodes.add("arr int " + ident.getWordName() + "[" + (d1 * d2) + "]");
+                i = 0;
+                for (Word word : constInitVal.getComponents()) {
+                    if (word instanceof NonTerminalWord) {
+                        NonTerminalWord initVal1 = (NonTerminalWord) word;
                         j = 0;
-                        if (i == d1) {
-                            break;
+                        for (Word word1 : initVal1.getComponents()) {
+                            if (word1 instanceof NonTerminalWord) {
+                                NonTerminalWord exp =
+                                        (NonTerminalWord) ((NonTerminalWord) word1).getComponents().get(0);
+                                String s = analyseExp(exp);
+                                midCodes.add(ident.getWordName() + "[" + (i * d2 + j) + "]" + " = " + s);
+                                j += 1;
+                            }
+                            if (j == d2) {
+                                i += 1;
+                                break;
+                            }
                         }
                     }
+                    if (i == d1) {
+                        break;
+                    }
                 }
+
             }
         }
         symbolTable.add(identSymbol);
     }
+
 
     private void analyseVarDef(NonTerminalWord varDef) {
         ArrayList<Word> components = varDef.getComponents();
@@ -240,7 +257,7 @@ public class MidCodeGenerator {
         symbolTable.addNewLayer();
         for (IdentSymbol identSymbol : identSymbols) {
             symbolTable.add(identSymbol);
-            midCodes.add("para int " + ident.getWordName());
+            midCodes.add("para int " + identSymbol.getName());
         }
         midCodes.add("@func_begin " + funcSymbol.getName());
         NonTerminalWord block = (NonTerminalWord) components.get(components.size() - 1);
@@ -346,41 +363,42 @@ public class MidCodeGenerator {
 
     private void analyseIfStmt(NonTerminalWord stmt) {
         ArrayList<NonTerminalWord> arrayList = transIfStmt(stmt);
-        String endLabel = "endif" + numberOfIf;
+        int n = numberOfIf;
         numberOfIf += 1;
+        String endLabel = "if_end" + n;
         int length = arrayList.size() / 2; // cond的数目
         if (arrayList.size() % 2 == 0) {
             //最终以else if 结尾
             for (int i = 0; i < length; i++) {
                 NonTerminalWord cond = arrayList.get(2 * i);
                 NonTerminalWord stmt1 = arrayList.get(2 * i + 1);
-                String successLabel = "if" + numberOfIf + "_" + i + "_B";
+                String successLabel = "if_entry" + n + "_" + i;
                 String failLabel;
-                if (i == length - 1) {
-                    failLabel = endLabel;
-                } else {
-                    failLabel = "if" + numberOfIf + "_" + (i + 1) + "_A";
-                }
-                midCodes.add("@label " + "if" + numberOfIf + "_" + i + "_A");
+                failLabel = "if_begin" + n + "_" + (i + 1);
+                midCodes.add("@label " + "if_begin" + n + "_" + i);
                 analyseCond(cond, successLabel, failLabel);
-                midCodes.add("@label " + "if" + numberOfIf + "_" + i + "_B");
+                midCodes.add("@label " + "if_entry" + n + "_" + i);
                 analyse(stmt1);
                 if (i != length - 1) {
                     midCodes.add("goto " + endLabel);
                 }
             }
+            midCodes.add("@label " + "if_begin" + n + "_" + length);
+            midCodes.add("@label " + "if_entry" + n + "_" + length);
         } else {
             for (int i = 0; i < length; i++) {
                 NonTerminalWord cond = arrayList.get(2 * i);
                 NonTerminalWord stmt1 = arrayList.get(2 * i + 1);
-                String successLabel = "if" + numberOfIf + "_" + i + "_B";
-                String failLabel = "if" + numberOfIf + "_" + (i + 1) + "_A";
-                midCodes.add("@label " + "if" + numberOfIf + "_" + i + "_A");
+                String successLabel = "if_entry" + n + "_" + i;
+                String failLabel = "if_begin" + n + "_" + (i + 1);
+                midCodes.add("@label " + "if_begin" + n + "_" + i);
                 analyseCond(cond, successLabel, failLabel);
-                midCodes.add("@label " + "if" + numberOfIf + "_" + i + "_B");
+                midCodes.add("@label " + "if_entry" + n + "_" + i);
                 analyse(stmt1);
+                midCodes.add("goto " + endLabel);
             }
-            midCodes.add("@label " + "if" + numberOfIf + "_" + length + "_A");
+            midCodes.add("@label " + "if_begin" + n + "_" + length);
+            midCodes.add("@label " + "if_entry" + n + "_" + length);
             NonTerminalWord stmt2 = arrayList.get(arrayList.size() - 1);
             analyseStmt(stmt2);
         }
@@ -418,8 +436,8 @@ public class MidCodeGenerator {
         for (int i = 0; i < string.length(); i++) {
             if (string.charAt(i) == '%') {
                 ss.add(string.substring(last, i));
-                i += 2;
-                last = i;
+                last = i + 2;
+                i += 1;
             }
         }
         if (last < string.length()) {
@@ -431,7 +449,13 @@ public class MidCodeGenerator {
             }
             NonTerminalWord exp1 = (NonTerminalWord) components.get(4 + 2 * i);
             String temp = analyseExp(exp1);
-            midCodes.add("@printf" + " %d " + temp);
+            Pattern pattern = Pattern.compile("^[-+]?[\\d]*$");
+            Matcher matcher = pattern.matcher(temp);
+            if (matcher.matches()) {
+                midCodes.add("@printf " + temp);
+            } else {
+                midCodes.add("@printf" + " %d " + temp);
+            }
         }
         if (ss.size() > numberOfExps) {
             midCodes.add("@printf " + ss.get(ss.size() - 1).replace(" ", "#"));
@@ -489,9 +513,11 @@ public class MidCodeGenerator {
         String returnTemp1;
         NonTerminalWord mulExp = (NonTerminalWord) components.get(0);
         String temp = analyseMulExp(mulExp);
-        returnTemp = "#t" + numberOfTemp;
-        numberOfTemp += 1;
-        midCodes.add(returnTemp + " = " + temp);
+        returnTemp = temp;
+        if (components.size() == 1) {
+            // 如果只有一项，那么不需要生成等式
+            return returnTemp;
+        }
         for (int i = 0; i < (components.size() - 1) / 2; i++) {
             TerminalWord op = (TerminalWord) components.get(2 * i + 1);
             mulExp = (NonTerminalWord) components.get(2 * i + 2);
@@ -510,9 +536,11 @@ public class MidCodeGenerator {
         String returnTemp1;
         NonTerminalWord unaryExp = (NonTerminalWord) components.get(0);
         String temp = analyseUnaryExp(unaryExp);
-        returnTemp = "#t" + numberOfTemp;
-        numberOfTemp += 1;
-        midCodes.add(returnTemp + " = " + temp);
+        returnTemp = temp;
+        if (components.size() == 1) {
+            // 如果只有一项，那么不需要生成等式
+            return temp;
+        }
         for (int i = 0; i < (components.size() - 1) / 2; i++) {
             TerminalWord op = (TerminalWord) components.get(2 * i + 1);
             unaryExp = (NonTerminalWord) components.get(2 * i + 2);
@@ -536,7 +564,9 @@ public class MidCodeGenerator {
                 analyseFuncRParams(funcRParams);
             }
             midCodes.add("call " + ident.getWordName());
-            return "RET";
+            midCodes.add("#t" + numberOfTemp + " = RET");
+            numberOfTemp += 1;
+            return "#t" + (numberOfTemp - 1);
         } else {
             NonTerminalWord first = (NonTerminalWord) components.get(0);
             if (first.getType().equals("<UnaryOp>")) {
@@ -563,7 +593,15 @@ public class MidCodeGenerator {
             temps.add(temp);
         }
         for (String temp : temps) {
-            midCodes.add("push " + temp);
+            Pattern pattern = Pattern.compile("^[-+]?[\\d]*$");
+            Matcher matcher = pattern.matcher(temp);
+            if (matcher.matches()) {
+                midCodes.add("#t" + numberOfTemp + " = " + temp);
+                midCodes.add("push " + "#t" + numberOfTemp);
+                numberOfTemp += 1;
+            } else {
+                midCodes.add("push " + temp);
+            }
         }
     }
 
@@ -583,9 +621,16 @@ public class MidCodeGenerator {
         } else {
             NonTerminalWord lVal = (NonTerminalWord) components.get(0);
             temp = analyseLVal(lVal);
-            midCodes.add("#t" + numberOfTemp + " = " + temp);
-            returnTemp = "#t" + numberOfTemp;
-            numberOfTemp += 1;
+            if (temp.contains("[")) {
+                // 如果是数组左值，那么需要一个临时变量存储
+                midCodes.add("#t" + numberOfTemp + " = " + temp);
+                returnTemp = "#t" + numberOfTemp;
+                numberOfTemp += 1;
+            } else {
+                // 不是数组变量，直接返回左值本身
+                returnTemp = temp;
+            }
+
         }
         return returnTemp;
     }
@@ -663,9 +708,11 @@ public class MidCodeGenerator {
         String returnTemp1;
         NonTerminalWord relExp = (NonTerminalWord) components.get(0);
         String temp = analyseRelExp(relExp);
-        returnTemp = "#t" + numberOfTemp;
-        numberOfTemp += 1;
-        midCodes.add(returnTemp + " = " + temp);
+        returnTemp = temp;
+        if (components.size() == 1) {
+            // 如果只有一项，那么不需要生成等式
+            return returnTemp;
+        }
         for (int i = 0; i < (components.size() - 1) / 2; i++) {
             TerminalWord op = (TerminalWord) components.get(2 * i + 1);
             relExp = (NonTerminalWord) components.get(2 * i + 2);
@@ -684,9 +731,11 @@ public class MidCodeGenerator {
         String returnTemp1;
         NonTerminalWord addExp = (NonTerminalWord) components.get(0);
         String temp = analyseAddExp(addExp);
-        returnTemp = "#t" + numberOfTemp;
-        numberOfTemp += 1;
-        midCodes.add(returnTemp + " = " + temp);
+        returnTemp = temp;
+        if (components.size() == 1) {
+            // 如果只有一项，那么不需要生成等式
+            return returnTemp;
+        }
         for (int i = 0; i < (components.size() - 1) / 2; i++) {
             TerminalWord op = (TerminalWord) components.get(2 * i + 1);
             relExp = (NonTerminalWord) components.get(2 * i + 2);

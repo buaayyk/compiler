@@ -3,16 +3,21 @@ import java.util.ArrayList;
 public class SymbolTable {
     private final ArrayList<Symbol> symbols = new ArrayList<>();
     private final ArrayList<Integer> indexes = new ArrayList<>();
-    private ArrayList<Integer> spaces = new ArrayList<>(); // 每一个运行栈目前开辟空间的大小
-    private ArrayList<Integer> ras = new ArrayList<>(); // 每一个运行栈对应的返回地址ra的值
+    private final ArrayList<Integer> spaces = new ArrayList<>(); // 每一个运行栈目前开辟空间的大小
+    private final ArrayList<Integer> ras = new ArrayList<>(); // 每一个运行栈对应的返回地址ra的值
 
 
     public int getCurrentRaAddress() {
         return ras.get(ras.size() - 1);
     }
 
-    public int getCurrentSpace() {
-        return spaces.get(spaces.size() - 1);
+    // 获得包括当前层向前数n个层目前占据的空间
+    public int getLatestSpace(int n) {
+        int space = 0;
+        for (int i = spaces.size() - 1; i >= spaces.size() - n; i--) {
+            space += spaces.get(i);
+        }
+        return space;
     }
 
     public void add(Symbol symbol) {
@@ -100,6 +105,9 @@ public class SymbolTable {
             Symbol symbol = symbols.get(i);
             if (symbol instanceof IdentSymbol) {
                 IdentSymbol identSymbol = (IdentSymbol) symbol;
+                if (identSymbol.getName().equals(name)) {
+                    break;
+                }
                 if (identSymbol.numberOfDimensions() == 0) {
                     offset += 4;
                 } else if (identSymbol.numberOfDimensions() == 1) {
