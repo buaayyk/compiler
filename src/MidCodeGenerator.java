@@ -379,9 +379,7 @@ public class MidCodeGenerator {
                 analyseCond(cond, successLabel, failLabel);
                 midCodes.add("@label " + "if_entry" + n + "_" + i);
                 analyse(stmt1);
-                if (i != length - 1) {
-                    midCodes.add("goto " + endLabel);
-                }
+                midCodes.add("goto " + endLabel);
             }
             midCodes.add("@label " + "if_begin" + n + "_" + length);
             midCodes.add("@label " + "if_entry" + n + "_" + length);
@@ -401,6 +399,7 @@ public class MidCodeGenerator {
             midCodes.add("@label " + "if_entry" + n + "_" + length);
             NonTerminalWord stmt2 = arrayList.get(arrayList.size() - 1);
             analyseStmt(stmt2);
+            midCodes.add("goto " + endLabel);
         }
         midCodes.add("@label " + endLabel);
     }
@@ -561,7 +560,7 @@ public class MidCodeGenerator {
             int length = components.size();
             if (length == 4) {
                 NonTerminalWord funcRParams = (NonTerminalWord) components.get(2);
-                analyseFuncRParams(funcRParams);
+                analyseFuncRParams(ident.getWordName(), funcRParams);
             }
             midCodes.add("call " + ident.getWordName());
             midCodes.add("#t" + numberOfTemp + " = RET");
@@ -584,25 +583,76 @@ public class MidCodeGenerator {
         }
     }
 
-    private void analyseFuncRParams(NonTerminalWord funcRParams) {
+    private void analyseFuncRParams(String funcName, NonTerminalWord funcRParams) {
         ArrayList<Word> components = funcRParams.getComponents();
-        ArrayList<String> temps = new ArrayList<>();
+        FuncSymbol funcSymbol = symbolTable.searchFunc(funcName);
+        ArrayList<IdentSymbol> paras = funcSymbol.getParameters();
+        ArrayList<NonTerminalWord> exps = new ArrayList<>();
         for (int i = 0; i < components.size(); i += 2) {
-            NonTerminalWord exp = (NonTerminalWord) components.get(i);
-            String temp = analyseExp(exp);
-            temps.add(temp);
+            exps.add((NonTerminalWord) components.get(i));
         }
-        for (String temp : temps) {
-            Pattern pattern = Pattern.compile("^[-+]?[\\d]*$");
-            Matcher matcher = pattern.matcher(temp);
-            if (matcher.matches()) {
-                midCodes.add("#t" + numberOfTemp + " = " + temp);
-                midCodes.add("push " + "#t" + numberOfTemp);
-                numberOfTemp += 1;
+        ArrayList<String> arrayList1 = new ArrayList<>(); // 存放push前的表达式
+        ArrayList<String> arrayList2 = new ArrayList<>(); // 存放直接push的表达式
+        for (int i = 0; i < paras.size(); i++) {
+            // 针对每一个参数进行分析
+            IdentSymbol identSymbol = paras.get(i);
+            NonTerminalWord exp = exps.get(i);
+            if (identSymbol.numberOfDimensions() == 0) {
+                // 传进去普通变量的值
+                String temp = analyseExp(exp);
+                Pattern pattern = Pattern.compile("^[-+]?[\\d]*$");
+                Matcher matcher = pattern.matcher(temp);
+                if (matcher.matches()) {
+                    // 纯数字
+                    arrayList1.add("#t" + numberOfTemp + " = " + temp);
+                    arrayList2.add("push " + "#t" + numberOfTemp);
+                    numberOfTemp += 1;
+                } else {
+                    arrayList2.add("push " + temp);
+                }
+            } else if (identSymbol.numberOfDimensions() == 1) {
+                // 传入一维数组,在这种情况下只可能是a[xxx](a是二维数组)或者a(a是一维数组),这时可能需要计算[xxx]
+                // 用push带[]表示传入的是地址
+                ArrayList<Word> arrayList = analyseArray(exp);
+                TerminalWord ident = (TerminalWord) arrayList.get(0);
+                if (arrayList.size() == 1) {
+                    arrayList2.add("push " + ident.getWordName() + "[0]");
+                } else {
+                    NonTerminalWord exp1 = (NonTerminalWord) arrayList.get(1);
+                    String temp = analyseExp(exp1);
+                    IdentSymbol identSymbol1 = symbolTable.searchIdentInAllLayers(ident.getWordName());
+                    int d2 = identSymbol1.dimension(1);
+                    arrayList1.add("#t" + numberOfTemp + " = " + d2 + " * " + temp);
+                    arrayList2.add("push " + ident.getWordName() + "[" + "#t" + numberOfTemp + "]");
+                    numberOfTemp += 1;
+                }
             } else {
-                midCodes.add("push " + temp);
+                // 传入二维数组,在这种情况下一定是a(a是二维数组),因此只需要找出ident就行了
+                // 用push带[]表示传入的是地址
+                ArrayList<Word> arrayList = analyseArray(exp);
+                TerminalWord ident = (TerminalWord) arrayList.get(0);
+                arrayList2.add("push " + ident.getWordName() + "[0]");
             }
         }
+        midCodes.addAll(arrayList1);
+        midCodes.addAll(arrayList2);
+    }
+
+    private ArrayList<Word> analyseArray(NonTerminalWord exp) {
+        // 返回数组所在的lVal的components(不包括[])
+        NonTerminalWord addExp = (NonTerminalWord) exp.getComponents().get(0);
+        NonTerminalWord mulExp = (NonTerminalWord) addExp.getComponents().get(0);
+        NonTerminalWord unaryExp = (NonTerminalWord) mulExp.getComponents().get(0);
+        NonTerminalWord primaryExp = (NonTerminalWord) unaryExp.getComponents().get(0);
+        NonTerminalWord lVal = (NonTerminalWord) primaryExp.getComponents().get(0);
+        ArrayList<Word> components = lVal.getComponents();
+        ArrayList<Word> arrayList = new ArrayList<>();
+        TerminalWord ident = (TerminalWord) components.get(0);
+        arrayList.add(ident);
+        for (int i = 2; i < components.size(); i += 3) {
+            arrayList.add(components.get(i));
+        }
+        return arrayList;
     }
 
     private String analysePrimaryExp(NonTerminalWord primaryExp) {

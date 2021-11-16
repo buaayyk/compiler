@@ -5,7 +5,7 @@ public class FuncSymbol extends Symbol {
     private final String returnType;
 
     public FuncSymbol(String name, String returnType) {
-        super(name,"func");
+        super(name, "func");
         this.returnType = returnType;
     }
 
@@ -23,5 +23,9 @@ public class FuncSymbol extends Symbol {
 
     public IdentSymbol getParameterAttribute(int index) {
         return parameters.get(index);
+    }
+
+    public ArrayList<IdentSymbol> getParameters() {
+        return new ArrayList<>(parameters);
     }
 }

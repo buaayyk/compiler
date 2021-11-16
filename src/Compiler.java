@@ -11,7 +11,7 @@ import java.util.HashSet;
 
 public class Compiler {
     public static void main(String[] args) throws IOException {
-        final boolean grammaticalAnalysisPrint = true;
+        final boolean grammaticalAnalysisPrint = false;
         final boolean errorPrint = false;
         final boolean midCodePrint = true;
         final boolean finalCodePrint = true;
@@ -71,7 +71,7 @@ public class Compiler {
         midCodeGenerator.analyse();
         ArrayList<String> midCodes = midCodeGenerator.getMidCodes();
         if (midCodePrint) {
-            write(midCodes,"midCode.txt");
+            write(midCodes, "midCode.txt");
         }
 
         FinalCodeGenerator finalCodeGenerator = new FinalCodeGenerator(midCodes);

@@ -11,6 +11,10 @@ public class SymbolTable {
         return ras.get(ras.size() - 1);
     }
 
+    public int getLatestRaAddress(int n) {
+        return ras.get(ras.size() - n);
+    }
+
     // 获得包括当前层向前数n个层目前占据的空间
     public int getLatestSpace(int n) {
         int space = 0;

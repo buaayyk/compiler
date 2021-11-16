@@ -6,19 +6,26 @@ public class FinalCodeGenerator {
     private final ArrayList<String> midCodes;
     private int index = 0;
     private String midCodeNow;
-    private ArrayList<String> finalCodes = new ArrayList<>();
+    private final ArrayList<String> finalCodes = new ArrayList<>();
     private final SymbolTable symbolTable = new SymbolTable();
     private int numberOfString = 0;
     private final ArrayList<Integer> depthsOfWhile = new ArrayList<>();
     // 当前代码所处的while里面嵌套的if的个数：用于break和continue的时候使用
     private boolean funcStart = false; // 标识当前已经开始编译函数
     private int numberOfNot = 0;
-    private ArrayList<String> dataFinalCodes = new ArrayList<>(); // 数据区目标代码
+    private final ArrayList<String> dataFinalCodes = new ArrayList<>(); // 数据区目标代码
+    private final ArrayList<Integer> depthsOfFunc = new ArrayList<>(); // 当前在函数里面套的层数---指自一个函数里面的block的层数
 
     public FinalCodeGenerator(ArrayList<String> midCodes) {
         this.midCodes = midCodes;
         dataFinalCodes.add(".data");
         finalCodes.add(".text");
+    }
+
+    private boolean isDigit(String s) {
+        Pattern pattern = Pattern.compile("^[-+]?[\\d]*$");
+        Matcher matcher = pattern.matcher(s);
+        return matcher.matches();
     }
 
     public ArrayList<String> getFinalCodes() {
@@ -85,7 +92,14 @@ public class FinalCodeGenerator {
         } else if (splitMidCodeNow[0].equals("push")) {
             // 6 实参压栈 [实参名]
             five[0] = "6";
-            five[1] = splitMidCodeNow[1];
+            if (splitMidCodeNow[1].contains("[")) {
+                five[1] = splitMidCodeNow[1].split("\\[")[0];
+                five[2] = splitMidCodeNow[1].
+                        split("\\[")[1].substring(0, splitMidCodeNow[1].split("\\[")[1].length() - 1);
+            } else {
+                five[1] = splitMidCodeNow[1];
+                five[2] = "";
+            }
         } else if (splitMidCodeNow[0].equals("call")) {
             // 7  函数调用 [被调用函数名]
             five[0] = "7";
@@ -244,11 +258,8 @@ public class FinalCodeGenerator {
         String leftValue = five[2];
         String opNumber1 = five[3];
         String opNumber2 = five[4];
-        Pattern pattern = Pattern.compile("^[-+]?[\\d]*$");
-        Matcher matcher1 = pattern.matcher(opNumber1);
-        Matcher matcher2 = pattern.matcher(opNumber2);
         // 考虑操作数1和2分别可能是常数
-        if (matcher1.matches()) {
+        if (isDigit(opNumber1)) {
             finalCodes.add("li $t1," + opNumber1);
         } else {
             if (opNumber1.equals("RET")) {
@@ -263,7 +274,7 @@ public class FinalCodeGenerator {
                 }
             }
         }
-        if (matcher2.matches()) {
+        if (isDigit(opNumber2)) {
             finalCodes.add("li $t2," + opNumber2);
         } else {
             if (opNumber2.equals("RET")) {
@@ -286,7 +297,7 @@ public class FinalCodeGenerator {
                 finalCodes.add("sub $t0,$t1,$t2");
                 break;
             case "!":
-                finalCodes.add("bne $t0,$zero,notLabel" + numberOfNot + "_1");
+                finalCodes.add("bne $t2,$zero,notLabel" + numberOfNot + "_1");
                 finalCodes.add("nop");
                 finalCodes.add("li $t0,1");
                 finalCodes.add("j notLabel" + numberOfNot + "_0");
@@ -330,6 +341,7 @@ public class FinalCodeGenerator {
                 finalCodes.add("slt $t4,$t2,$t1");
                 finalCodes.add("nor $t0,$t3,$t4");
                 finalCodes.add("sll $t0,$t0,31");
+                finalCodes.add("srl $t0,$t0,31");
                 break;
             case "!=":
                 // 转化为判断(t1<t2 or t2<t1)
@@ -374,6 +386,7 @@ public class FinalCodeGenerator {
 
     private void funcDef(String[] five) {
         symbolTable.addNewLayer();
+        depthsOfFunc.add(1);
     }
 
     private void funcBegin(String[] five) {
@@ -385,20 +398,21 @@ public class FinalCodeGenerator {
         symbolTable.add(identSymbol);
     }
 
-
     private void funcEnd(String[] five) {
         String latestFuncBegin = getLatestFuncBegin();
         if (latestFuncBegin != null && latestFuncBegin.equals("main")) {
             finalCodes.add("li $v0,10");
             finalCodes.add("syscall");
         } else {
-            finalCodes.add("addi $sp,$sp," + (symbolTable.getLatestSpace(1) - symbolTable.getCurrentRaAddress()));
+            int n = depthsOfFunc.get(depthsOfFunc.size() - 1);
+            finalCodes.add("addi $sp,$sp," + (symbolTable.getLatestSpace(n) - symbolTable.getLatestRaAddress(n)));
             finalCodes.add("lw $ra,0($sp)");
             finalCodes.add("addi $sp,$sp,4");
             finalCodes.add("jr $ra");
             finalCodes.add("nop");
             symbolTable.removeCurrentLayer();
         }
+        depthsOfFunc.remove(depthsOfFunc.size() - 1);
     }
 
     private void funcParaF(String[] five) {
@@ -412,24 +426,58 @@ public class FinalCodeGenerator {
             five1 = analyseMidCodeNow();
         }
         index -= 1;
-        int length = fives.size();
-        for (int i = 0; i < length; i++) {
-            String paraFName = fives.get(i)[1];
+        for (String[] strings : fives) {
+            String paraFName = strings[1];
             IdentSymbol identSymbol = new IdentSymbol(paraFName, false);
             symbolTable.add(identSymbol);
         }
     }
 
     private void funcParaR(String[] five) {
-        String funcRExp = five[1];
-        int offset = symbolTable.getIdentAddress(funcRExp);
-        if (offset == -1) {
-            // 变量在数据区
-            finalCodes.add("lw $t0," + funcRExp);
-        } else {
-            finalCodes.add("lw $t0," + offset + "($sp)");
+        int n = 0; // 该条语句前面push的数量
+        for (int i = index - 2; i >= 0; i--) {
+            String midCode = midCodes.get(i);
+            String[] ss = midCode.split(" ");
+            if (ss[0].equals("push")) {
+                n += 1;
+            } else {
+                break;
+            }
         }
-
+        String funcRExp = five[1];
+        // 在中间代码生成阶段已经保证了不会出现push a[1](a[1]是一个值)的情况发生
+        if (five[2].equals("")) {
+            // 此时传值
+            if (isDigit(funcRExp)) {
+                finalCodes.add("li $t0," + funcRExp);
+            } else {
+                int offset = symbolTable.getIdentAddress(funcRExp);
+                if (offset == -1) {
+                    // 符号表里找不到，说明一定是全局变量
+                    finalCodes.add("lw $t0," + funcRExp);
+                } else {
+                    finalCodes.add("lw $t0," + (offset + 4 * n) + "($sp)");
+                }
+            }
+        } else {
+            // 此时传地址
+            // 此时的funcExp不可能是纯数字
+            String offset1 = five[2];
+            int offset = symbolTable.getIdentAddress(funcRExp);
+            if (offset == -1) {
+                finalCodes.add("la $t0," + funcRExp);
+            } else {
+                finalCodes.add("lw $t0," + (offset + 4 * n) + "($sp)");
+            }
+            if (isDigit(offset1)) {
+                finalCodes.add("li $t1," + (4 * Integer.parseInt(offset1)));
+            } else {
+                offset = symbolTable.getIdentAddress(offset1);
+                finalCodes.add("lw $t1," + (offset + 4 * n) + "($sp)");
+                finalCodes.add("sll $t1,$t1,2");
+            }
+            finalCodes.add("add $t0,$t0,$t1");
+        }
         finalCodes.add("addi $sp,$sp,-4");
         finalCodes.add("sw $t0,0($sp)");
     }
@@ -453,9 +501,7 @@ public class FinalCodeGenerator {
     private void funcRet(String[] five) {
         if (!five[1].equals("")) {
             String funcRetExp = five[1];
-            Pattern pattern = Pattern.compile("^[-+]?[\\d]*$");
-            Matcher matcher = pattern.matcher(five[1]);
-            if (matcher.matches()) {
+            if (isDigit(five[1])) {
                 // 返回值可能是一个常数
                 finalCodes.add("li $v0," + five[1]);
             } else {
@@ -475,7 +521,8 @@ public class FinalCodeGenerator {
             finalCodes.add("syscall");
         } else {
             // 如果不是main函数，则释放栈空间，然后跳转回调用函数
-            finalCodes.add("addi $sp,$sp," + (symbolTable.getLatestSpace(1) - symbolTable.getCurrentRaAddress()));
+            int n = depthsOfFunc.get(depthsOfFunc.size() - 1);
+            finalCodes.add("addi $sp,$sp," + (symbolTable.getLatestSpace(n) - symbolTable.getLatestRaAddress(n)));
             finalCodes.add("lw $ra,0($sp)");
             finalCodes.add("addi $sp,$sp,4");
             finalCodes.add("jr $ra");
@@ -506,17 +553,18 @@ public class FinalCodeGenerator {
     }
 
     private void label(String[] five) {
-        finalCodes.add(five[1] + ":");
         if (five[1].contains("loop_begin")) {
             symbolTable.addNewLayer();
         }
         if (five[1].contains("loop_entry")) {
             depthsOfWhile.add(1);
+            depthsOfFunc.set(depthsOfFunc.size() - 1, depthsOfFunc.get(depthsOfFunc.size() - 1) + 1);
             symbolTable.removeCurrentLayer();
             symbolTable.addNewLayer();
         }
         if (five[1].contains("loop_end")) {
             depthsOfWhile.remove(depthsOfWhile.size() - 1);
+            depthsOfFunc.set(depthsOfFunc.size() - 1, depthsOfFunc.get(depthsOfFunc.size() - 1) - 1);
             symbolTable.removeCurrentLayer();
         }
         if (five[1].contains("if_begin")) {
@@ -527,6 +575,7 @@ public class FinalCodeGenerator {
                     depthsOfWhile.set(depthsOfWhile.size() - 1,
                             depthsOfWhile.get(depthsOfWhile.size() - 1) - 1);
                 }
+                depthsOfFunc.set(depthsOfFunc.size() - 1, depthsOfFunc.get(depthsOfFunc.size() - 1) - 1);
                 symbolTable.removeCurrentLayer();
             }
             symbolTable.addNewLayer();
@@ -537,6 +586,7 @@ public class FinalCodeGenerator {
                 depthsOfWhile.set(depthsOfWhile.size() - 1,
                         depthsOfWhile.get(depthsOfWhile.size() - 1) + 1);
             }
+            depthsOfFunc.set(depthsOfFunc.size() - 1, depthsOfFunc.get(depthsOfFunc.size() - 1) + 1);
             symbolTable.removeCurrentLayer();
             symbolTable.addNewLayer();
         }
@@ -546,22 +596,28 @@ public class FinalCodeGenerator {
                 depthsOfWhile.set(depthsOfWhile.size() - 1,
                         depthsOfWhile.get(depthsOfWhile.size() - 1) - 1);
             }
+            depthsOfFunc.set(depthsOfFunc.size() - 1, depthsOfFunc.get(depthsOfFunc.size() - 1) - 1);
             symbolTable.removeCurrentLayer();
         }
         if (five[1].contains("or")) {
             symbolTable.removeCurrentLayer();
             symbolTable.addNewLayer();
         }
+        finalCodes.add(five[1] + ":");
     }
 
     private void beq(String[] five) {
         String opNumber1 = five[1];
         String label = five[3];
-        int offset = symbolTable.getIdentAddress(opNumber1);
-        if (offset == -1) {
-            finalCodes.add("lw $t0," + opNumber1);
+        if (isDigit(opNumber1)) {
+            finalCodes.add("li $t0," + opNumber1);
         } else {
-            finalCodes.add("lw $t0," + offset + "($sp)");
+            int offset = symbolTable.getIdentAddress(opNumber1);
+            if (offset == -1) {
+                finalCodes.add("lw $t0," + opNumber1);
+            } else {
+                finalCodes.add("lw $t0," + offset + "($sp)");
+            }
         }
         finalCodes.add("addi $sp,$sp," + symbolTable.getLatestSpace(1));
         finalCodes.add("beq $t0,0," + label);
@@ -575,7 +631,7 @@ public class FinalCodeGenerator {
             finalCodes.add("addi $sp,$sp," +
                     symbolTable.getLatestSpace(depthsOfWhile.get(depthsOfWhile.size() - 1)));
         }
-        if (label.contains("if_begin") && label.contains("if_end")) {
+        if (label.contains("if_begin") || label.contains("if_end")) {
             finalCodes.add("addi $sp,$sp," + symbolTable.getLatestSpace(1));
         }
         if (label.contains("entry")) {
@@ -611,11 +667,15 @@ public class FinalCodeGenerator {
         if (right.equals("RET")) {
             finalCodes.add("move $t1,$v0");
         } else {
-            int offset1 = symbolTable.getIdentAddress(right);
-            if (offset1 == -1) {
-                finalCodes.add("lw $t1," + right);
+            if (isDigit(right)) {
+                finalCodes.add("li $t1," + right);
             } else {
-                finalCodes.add("lw $t1," + offset1 + "($sp)");
+                int offset1 = symbolTable.getIdentAddress(right);
+                if (offset1 == -1) {
+                    finalCodes.add("lw $t1," + right);
+                } else {
+                    finalCodes.add("lw $t1," + offset1 + "($sp)");
+                }
             }
         }
         int offset1 = symbolTable.getIdentAddress(arrName);
@@ -624,7 +684,20 @@ public class FinalCodeGenerator {
         } else {
             finalCodes.add("lw $t0," + offset1 + "($sp)");
         }
-        finalCodes.add("sw $t1," + (4 * Integer.parseInt(offset)) + "($t0)");
+        if (isDigit(offset)) {
+            finalCodes.add("sw $t1," + (4 * Integer.parseInt(offset)) + "($t0)");
+        } else {
+            offset1 = symbolTable.getIdentAddress(offset);
+            if (offset1 == -1) {
+                finalCodes.add("lw $t2," + offset);
+
+            } else {
+                finalCodes.add("lw $t2," + symbolTable.getIdentAddress(offset) + "($sp)");
+            }
+            finalCodes.add("sll $t2,$t2,2");
+            finalCodes.add("add $t3,$t0,$t2");
+            finalCodes.add("sw $t1,0($t3)");
+        }
     }
 
     private void rightArr(String[] five) {
@@ -637,10 +710,31 @@ public class FinalCodeGenerator {
         } else {
             finalCodes.add("lw $t0," + offset1 + "($sp)");
         }
-        finalCodes.add("lw $t1," + (4 * Integer.parseInt(offset)) + "($t0)");
+        if (isDigit(offset)) {
+            finalCodes.add("lw $t1," + (4 * Integer.parseInt(offset)) + "($t0)");
+        } else {
+            offset1 = symbolTable.getIdentAddress(offset);
+            if (offset1 == -1) {
+                finalCodes.add("lw $t2," + offset);
+
+            } else {
+                finalCodes.add("lw $t2," + symbolTable.getIdentAddress(offset) + "($sp)");
+            }
+            finalCodes.add("sll $t2,$t2,2");
+            finalCodes.add("add $t1,$t0,$t2");
+            finalCodes.add("lw $t1,0($t1)");
+        }
         offset1 = symbolTable.getIdentAddress(left);
         if (offset1 == -1) {
-            finalCodes.add("sw $t1," + left);
+            if (left.contains("#")) {
+                // 临时变量，需要新开辟空间
+                IdentSymbol identSymbol = new IdentSymbol(left, false);
+                symbolTable.add(identSymbol);
+                finalCodes.add("addi $sp,$sp,-4");
+                finalCodes.add("sw $t1,0($sp)");
+            } else {
+                finalCodes.add("sw $t1," + left);
+            }
         } else {
             finalCodes.add("sw $t1," + offset1 + "($sp)");
         }
@@ -679,5 +773,4 @@ public class FinalCodeGenerator {
             numberOfString += 1;
         }
     }
-
 }

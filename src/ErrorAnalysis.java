@@ -141,10 +141,19 @@ public class ErrorAnalysis {
             NonTerminalWord constExp = (NonTerminalWord) components.get(2 + 3 * i);
             analyse(constExp);
             Integer dimension = calculateExp(constExp.toString());
-            identSymbol.add(dimension);
+            if (dimension == null) {
+                identSymbol.add(0);
+            } else {
+                identSymbol.add(dimension);
+            }
         }
         if (lastWord instanceof NonTerminalWord) {
             analyse(lastWord);
+        }
+        if (identSymbol == null) {
+            System.out.println("1111111111");
+        } else {
+            System.out.println(identSymbol.getName());
         }
         symbolTable.add(identSymbol);
     }
