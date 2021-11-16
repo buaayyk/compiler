@@ -101,11 +101,13 @@ public class SymbolTable {
 
     public int getIdentAddress(String name) {
         int offset = 0;
+        boolean bool = false;
         for (int i = symbols.size() - 1; i >= 0; i--) {
             Symbol symbol = symbols.get(i);
             if (symbol instanceof IdentSymbol) {
                 IdentSymbol identSymbol = (IdentSymbol) symbol;
                 if (identSymbol.getName().equals(name)) {
+                    bool = true;
                     break;
                 }
                 if (identSymbol.numberOfDimensions() == 0) {
@@ -117,6 +119,11 @@ public class SymbolTable {
                 }
             }
         }
-        return offset;
+        if (!bool) {
+            // 没找到标识符，则返回-1
+            return -1;
+        } else {
+            return offset;
+        }
     }
 }
