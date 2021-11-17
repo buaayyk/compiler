@@ -174,6 +174,10 @@ public class FinalCodeGenerator {
                 five[1] = splitMidCodeNow[1];
                 five[2] = "";
             }
+        } else if (splitMidCodeNow[0].equals("@block_begin")) {
+            five[0] = "19";
+        } else if (splitMidCodeNow[0].equals("@block_end")) {
+            five[0] = "20";
         }
         return five;
     }
@@ -242,6 +246,12 @@ public class FinalCodeGenerator {
                     break;
                 case "18":
                     printf(five);
+                    break;
+                case "19":
+                    blockBegin(five);
+                    break;
+                case "20":
+                    blockEnd(five);
                     break;
                 default:
                     break;
@@ -326,14 +336,16 @@ public class FinalCodeGenerator {
                 finalCodes.add("slt $t0,$t2,$t1");
                 break;
             case "<=":
-                // 转化为判断t1<t2+1
-                finalCodes.add("addi $t2,$t2,1");
-                finalCodes.add("slt $t0,$t1,$t2");
+                // 转化为判断!(t2<t1)
+                finalCodes.add("slt $t0,$t2,$t1");
+                finalCodes.add("li $t1,0xfffffffe");
+                finalCodes.add("nor $t0,$t0,$t1");
                 break;
             case ">=":
-                // 转化为判断t2<t1+1
-                finalCodes.add("addi $t1,$t1,1");
-                finalCodes.add("slt $t0,$t2,$t1");
+                // 转化为判断!(t1<t2)
+                finalCodes.add("slt $t0,$t1,$t2");
+                finalCodes.add("li $t1,0xfffffffe");
+                finalCodes.add("nor $t0,$t0,$t1");
                 break;
             case "==":
                 // 转化为判断!(t1<t2 or t2<t1)
@@ -604,6 +616,26 @@ public class FinalCodeGenerator {
             symbolTable.addNewLayer();
         }
         finalCodes.add(five[1] + ":");
+    }
+
+    private void blockBegin(String[] five) {
+        if (depthsOfWhile.size() > 0) {
+            depthsOfWhile.set(depthsOfWhile.size() - 1,
+                    depthsOfWhile.get(depthsOfWhile.size() - 1) + 1);
+        }
+        depthsOfFunc.set(depthsOfFunc.size() - 1, depthsOfFunc.get(depthsOfFunc.size() - 1) + 1);
+        symbolTable.addNewLayer();
+    }
+
+    private void blockEnd(String[] five) {
+        if (depthsOfWhile.size() > 0) {
+            // endif出block
+            depthsOfWhile.set(depthsOfWhile.size() - 1,
+                    depthsOfWhile.get(depthsOfWhile.size() - 1) - 1);
+        }
+        depthsOfFunc.set(depthsOfFunc.size() - 1, depthsOfFunc.get(depthsOfFunc.size() - 1) - 1);
+        finalCodes.add("addi $sp,$sp," + symbolTable.getLatestSpace(1));
+        symbolTable.removeCurrentLayer();
     }
 
     private void beq(String[] five) {

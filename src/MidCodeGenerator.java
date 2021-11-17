@@ -81,6 +81,110 @@ public class MidCodeGenerator {
         symbolTable.removeCurrentLayer();
     }
 
+    private Integer calConstExp(NonTerminalWord constExp) {
+        Integer n = calculateExp(constExp.toString());
+        if (n != null) {
+            return n;
+        } else {
+            ArrayList<Word> components = constExp.getComponents();
+            NonTerminalWord addExp = (NonTerminalWord) components.get(0);
+            return calConstAddExp(addExp);
+        }
+    }
+
+    private Integer calConstAddExp(NonTerminalWord addExp) {
+        ArrayList<Word> components = addExp.getComponents();
+        NonTerminalWord mulExp = (NonTerminalWord) components.get(0);
+        TerminalWord op;
+        Integer n = calConstMulExp(mulExp);
+        Integer n1;
+        for (int i = 0; i < (components.size() - 1) / 2; i += 1) {
+            op = (TerminalWord) components.get(2 * i + 1);
+            mulExp = (NonTerminalWord) components.get(2 * i + 2);
+            n1 = calConstMulExp(mulExp);
+            if (op.getWordName().equals("+")) {
+                n = n + n1;
+            } else {
+                n = n - n1;
+            }
+        }
+        return n;
+    }
+
+    private Integer calConstMulExp(NonTerminalWord mulExp) {
+        ArrayList<Word> components = mulExp.getComponents();
+        NonTerminalWord unaryExp = (NonTerminalWord) components.get(0);
+        TerminalWord op;
+        Integer n = calConstUnaryExp(unaryExp);
+        Integer n1;
+        for (int i = 0; i < (components.size() - 1) / 2; i += 1) {
+            op = (TerminalWord) components.get(2 * i + 1);
+            unaryExp = (NonTerminalWord) components.get(2 * i + 2);
+            n1 = calConstUnaryExp(unaryExp);
+            if (op.getWordName().equals("*")) {
+                n = n * n1;
+            } else if (op.getWordName().equals("/")) {
+                n = n / n1;
+            } else {
+                n = n % n1;
+            }
+        }
+        return n;
+    }
+
+    private Integer calConstUnaryExp(NonTerminalWord unaryExp) {
+        // 不存在函数调用的情况
+        ArrayList<Word> components = unaryExp.getComponents();
+        NonTerminalWord first = (NonTerminalWord) components.get(0);
+        if (first.getType().equals("<PrimaryExp>")) {
+            return calConstPrimaryExp(first);
+        } else {
+            NonTerminalWord unaryExp1 = (NonTerminalWord) components.get(1);
+            Integer n = calConstUnaryExp(unaryExp1);
+            TerminalWord op = (TerminalWord) first.getComponents().get(0);
+            if (op.getWordName().equals("+")) {
+                return n;
+            } else {
+                return -n;
+            }
+        }
+    }
+
+    private Integer calConstPrimaryExp(NonTerminalWord primaryExp) {
+        ArrayList<Word> components = primaryExp.getComponents();
+        if (components.get(0) instanceof TerminalWord) {
+            TerminalWord first = (TerminalWord) components.get(0);
+            if (first.getWordName().equals("(")) {
+                NonTerminalWord exp = (NonTerminalWord) components.get(1);
+                return calConstExp(exp);
+            } else {
+                return Integer.parseInt(first.getWordName());
+            }
+        } else {
+            NonTerminalWord lVal = (NonTerminalWord) components.get(0);
+            return calConstLVal(lVal);
+        }
+    }
+
+    private Integer calConstLVal(NonTerminalWord lVal) {
+        ArrayList<Word> components = lVal.getComponents();
+        TerminalWord ident = (TerminalWord) components.get(0);
+        IdentSymbol identSymbol = symbolTable.searchIdentInAllLayers(ident.getWordName());
+        if (identSymbol.numberOfDimensions() == 0) {
+            return identSymbol.getValue();
+        } else if (identSymbol.numberOfDimensions() == 1) {
+            NonTerminalWord exp1 = (NonTerminalWord) components.get(2);
+            int i = calConstExp(exp1);
+            return identSymbol.getValue(i);
+        } else {
+            NonTerminalWord exp1 = (NonTerminalWord) components.get(2);
+            NonTerminalWord exp2 = (NonTerminalWord) components.get(5);
+            int i = calConstExp(exp1);
+            int j = calConstExp(exp2);
+            return identSymbol.getValue(i, j);
+        }
+    }
+
 
     private void analyseConstDef(NonTerminalWord constDef) {
         ArrayList<Word> components = constDef.getComponents();
@@ -355,7 +459,9 @@ public class MidCodeGenerator {
             } else {
                 // Block
                 symbolTable.addNewLayer();
+                midCodes.add("@block_begin");
                 analyse(nonTerminalWord);
+                midCodes.add("@block_end");
                 symbolTable.removeCurrentLayer();
             }
         }
