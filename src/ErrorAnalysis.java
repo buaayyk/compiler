@@ -150,11 +150,6 @@ public class ErrorAnalysis {
         if (lastWord instanceof NonTerminalWord) {
             analyse(lastWord);
         }
-        if (identSymbol == null) {
-            System.out.println("1111111111");
-        } else {
-            System.out.println(identSymbol.getName());
-        }
         symbolTable.add(identSymbol);
     }
 

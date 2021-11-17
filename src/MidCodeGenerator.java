@@ -64,11 +64,14 @@ public class MidCodeGenerator {
         Integer eval;
         eval = null;
         try {
-            eval = (Integer) scriptEngine.eval(string);
+            if (scriptEngine.eval(string) instanceof Double) {
+                eval = ((Double) scriptEngine.eval(string)).intValue();
+            } else {
+                eval = (Integer) scriptEngine.eval(string);
+            }
         } catch (ScriptException e) {
             e.printStackTrace();
         }
-
         return eval;
     }
 
@@ -153,16 +156,16 @@ public class MidCodeGenerator {
     private Integer calConstPrimaryExp(NonTerminalWord primaryExp) {
         ArrayList<Word> components = primaryExp.getComponents();
         if (components.get(0) instanceof TerminalWord) {
-            TerminalWord first = (TerminalWord) components.get(0);
-            if (first.getWordName().equals("(")) {
-                NonTerminalWord exp = (NonTerminalWord) components.get(1);
-                return calConstExp(exp);
-            } else {
-                return Integer.parseInt(first.getWordName());
-            }
+            NonTerminalWord exp = (NonTerminalWord) components.get(1);
+            return calConstExp(exp);
         } else {
-            NonTerminalWord lVal = (NonTerminalWord) components.get(0);
-            return calConstLVal(lVal);
+            NonTerminalWord first = (NonTerminalWord) components.get(0);
+            if (first.getType().equals("<LVal>")) {
+                return calConstLVal(first);
+            } else {
+                TerminalWord number = (TerminalWord) first.getComponents().get(0);
+                return Integer.parseInt(number.getWordName());
+            }
         }
     }
 
@@ -195,13 +198,13 @@ public class MidCodeGenerator {
         if (dimensions == 0) {
             //普通变量
             midCodes.add("const int " + ident.getWordName());
-            NonTerminalWord exp = (NonTerminalWord) constInitVal.getComponents().get(0);
-            String s = analyseExp(exp);
-            midCodes.add(ident.getWordName() + " = " + s);
-
+            NonTerminalWord constExp = (NonTerminalWord) constInitVal.getComponents().get(0);
+            Integer value = calConstExp(constExp);
+            identSymbol.restoreValue(value);
+            midCodes.add(ident.getWordName() + " = " + value);
         } else {
             NonTerminalWord constExp1 = (NonTerminalWord) components.get(2);
-            int d1 = calculateExp(constExp1.toString()); // 第一维
+            int d1 = calConstExp(constExp1);  // 第一维
             identSymbol.add(d1);
             int i;
             int j;
@@ -211,12 +214,12 @@ public class MidCodeGenerator {
                 i = 0;
                 for (Word word : constInitVal.getComponents()) {
                     if (word instanceof NonTerminalWord) {
-                        NonTerminalWord exp =
+                        NonTerminalWord constExp =
                                 (NonTerminalWord) ((NonTerminalWord) word).getComponents().get(0);
-                        String s = analyseExp(exp);
-                        midCodes.add(ident.getWordName() + "[" + i + "]" + " = " + s);
+                        Integer value = calConstExp(constExp);
+                        identSymbol.restoreValue(value, i);
+                        midCodes.add(ident.getWordName() + "[" + i + "]" + " = " + value);
                         i += 1;
-
                     }
                     if (i == d1) {
                         break;
@@ -225,20 +228,21 @@ public class MidCodeGenerator {
 
             } else {
                 NonTerminalWord constExp2 = (NonTerminalWord) components.get(5);
-                int d2 = calculateExp(constExp2.toString());
+                int d2 = calConstExp(constExp2);
                 identSymbol.add(d2);
                 midCodes.add("arr int " + ident.getWordName() + "[" + (d1 * d2) + "]");
                 i = 0;
                 for (Word word : constInitVal.getComponents()) {
                     if (word instanceof NonTerminalWord) {
-                        NonTerminalWord initVal1 = (NonTerminalWord) word;
+                        NonTerminalWord constInitVal1 = (NonTerminalWord) word;
                         j = 0;
-                        for (Word word1 : initVal1.getComponents()) {
+                        for (Word word1 : constInitVal1.getComponents()) {
                             if (word1 instanceof NonTerminalWord) {
-                                NonTerminalWord exp =
+                                NonTerminalWord constExp =
                                         (NonTerminalWord) ((NonTerminalWord) word1).getComponents().get(0);
-                                String s = analyseExp(exp);
-                                midCodes.add(ident.getWordName() + "[" + (i * d2 + j) + "]" + " = " + s);
+                                Integer value = calConstExp(constExp);
+                                identSymbol.restoreValue(value, i, j);
+                                midCodes.add(ident.getWordName() + "[" + (i * d2 + j) + "]" + " = " + value);
                                 j += 1;
                             }
                             if (j == d2) {
@@ -251,7 +255,6 @@ public class MidCodeGenerator {
                         break;
                     }
                 }
-
             }
         }
         symbolTable.add(identSymbol);
@@ -270,7 +273,6 @@ public class MidCodeGenerator {
         } else {
             dimensions = (components.size() - 1) / 3;
         }
-
         if (dimensions == 0) {
             midCodes.add("var int " + ident.getWordName());
             if (initial) {
@@ -281,7 +283,7 @@ public class MidCodeGenerator {
             }
         } else {
             NonTerminalWord constExp1 = (NonTerminalWord) components.get(2);
-            int d1 = calculateExp(constExp1.toString());
+            int d1 = calConstExp(constExp1);
             identSymbol.add(d1);
             int i;
             int j;
@@ -306,7 +308,7 @@ public class MidCodeGenerator {
                 }
             } else {
                 NonTerminalWord constExp2 = (NonTerminalWord) components.get(5);
-                int d2 = calculateExp(constExp2.toString());
+                int d2 = calConstExp(constExp2);
                 identSymbol.add(d2);
                 midCodes.add("arr int " + ident.getWordName() + "[" + (d1 * d2) + "]");
                 if (initial) {

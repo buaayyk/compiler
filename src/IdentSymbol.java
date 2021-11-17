@@ -18,10 +18,6 @@ public class IdentSymbol extends Symbol {
         this.address = address;
     }
 
-    public int getAddress() {
-        return address;
-    }
-
     public boolean isConst() {
         return isConst;
     }
@@ -56,7 +52,7 @@ public class IdentSymbol extends Symbol {
 
     public void restoreValue(int value, int i, int j) {
         if (isConst) {
-            values.set(value, i * dimension(1) + j);
+            values.set(i * dimension(1) + j, value);
         }
     }
 
