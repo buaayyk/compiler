@@ -28,15 +28,26 @@ public class NonTerminalWord implements Word {
 
     public String toString() {
         StringBuilder string = new StringBuilder();
-        for (Word word : components) {
-            if (word instanceof TerminalWord) {
-                string.append(((TerminalWord) word).getWordName());
-                string.append(" ");
-            } else {
-                string.append(((NonTerminalWord) word).toString());
+        if (type.equals("<MulExp>")) {
+            for (Word word : components) {
+                if (word instanceof NonTerminalWord) {
+                    string.append(((NonTerminalWord) word).toString());
+                    string = new StringBuilder("parseInt(" + string + ")");
+                } else {
+                    string = new StringBuilder(string + ((TerminalWord) word).getWordName() + " ");
+                }
+            }
+        } else {
+            for (Word word : components) {
+                if (word instanceof TerminalWord) {
+                    string.append(((TerminalWord) word).getWordName());
+                    string.append(" ");
+                } else {
+                    string.append(((NonTerminalWord) word).toString());
+                }
             }
         }
-        return string.toString();
+        return string.toString().toString();
     }
 
     public void print(BufferedWriter bw) {

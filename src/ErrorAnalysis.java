@@ -18,15 +18,18 @@ public class ErrorAnalysis {
 
     private Integer calculateExp(String string) {
         ScriptEngineManager scriptEngineManager = new ScriptEngineManager();
-        ScriptEngine scriptEngine = scriptEngineManager.getEngineByName("nashorn");
+        ScriptEngine scriptEngine = scriptEngineManager.getEngineByName("js");
         Integer eval;
         eval = null;
         try {
-            eval = (Integer) scriptEngine.eval(string);
+            if (scriptEngine.eval(string) instanceof Double) {
+                eval = ((Double) scriptEngine.eval(string)).intValue();
+            } else {
+                eval = (Integer) scriptEngine.eval(string);
+            }
         } catch (ScriptException e) {
             e.printStackTrace();
         }
-
         return eval;
     }
 
@@ -233,7 +236,11 @@ public class ErrorAnalysis {
                 parameterSymbol.add(0);
                 NonTerminalWord constExp = (NonTerminalWord) parameterComponents.get(5);
                 Integer dimension = calculateExp(constExp.toString());
-                parameterSymbol.add(dimension);
+                if (dimension == null) {
+                    parameterSymbol.add(0);
+                } else {
+                    parameterSymbol.add(dimension);
+                }
             }
             parameterSymbols.add(parameterSymbol);
         }

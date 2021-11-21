@@ -60,7 +60,7 @@ public class MidCodeGenerator {
 
     private Integer calculateExp(String string) {
         ScriptEngineManager scriptEngineManager = new ScriptEngineManager();
-        ScriptEngine scriptEngine = scriptEngineManager.getEngineByName("nashorn");
+        ScriptEngine scriptEngine = scriptEngineManager.getEngineByName("js");
         Integer eval;
         eval = null;
         try {
@@ -398,7 +398,7 @@ public class MidCodeGenerator {
             // 二维数组
             identSymbol.add(0);
             NonTerminalWord constExp = (NonTerminalWord) components.get(5);
-            int d2 = calculateExp(constExp.toString());
+            int d2 = calConstExp(constExp);
             identSymbol.add(d2);
         }
         return identSymbol;

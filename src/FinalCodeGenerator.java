@@ -307,15 +307,7 @@ public class FinalCodeGenerator {
                 finalCodes.add("sub $t0,$t1,$t2");
                 break;
             case "!":
-                finalCodes.add("bne $t2,$zero,notLabel" + numberOfNot + "_1");
-                finalCodes.add("nop");
-                finalCodes.add("li $t0,1");
-                finalCodes.add("j notLabel" + numberOfNot + "_0");
-                finalCodes.add("nop");
-                finalCodes.add("notLabel" + numberOfNot + "_1:");
-                finalCodes.add("li $t0,0");
-                finalCodes.add("notLabel" + numberOfNot + "_0:");
-                numberOfNot += 1;
+                finalCodes.add("seq $t0,$t2,$zero");
                 break;
             case "*":
                 finalCodes.add("mult $t1,$t2");
@@ -333,33 +325,19 @@ public class FinalCodeGenerator {
                 finalCodes.add("slt $t0,$t1,$t2");
                 break;
             case ">":
-                finalCodes.add("slt $t0,$t2,$t1");
+                finalCodes.add("sgt $t0,$t1,$t2");
                 break;
             case "<=":
-                // 转化为判断!(t2<t1)
-                finalCodes.add("slt $t0,$t2,$t1");
-                finalCodes.add("li $t1,0xfffffffe");
-                finalCodes.add("nor $t0,$t0,$t1");
+                finalCodes.add("sle $t0,$t1,$t2");
                 break;
             case ">=":
-                // 转化为判断!(t1<t2)
-                finalCodes.add("slt $t0,$t1,$t2");
-                finalCodes.add("li $t1,0xfffffffe");
-                finalCodes.add("nor $t0,$t0,$t1");
+                finalCodes.add("sge $t0,$t1,$t2");
                 break;
             case "==":
-                // 转化为判断!(t1<t2 or t2<t1)
-                finalCodes.add("slt $t3,$t1,$t2");
-                finalCodes.add("slt $t4,$t2,$t1");
-                finalCodes.add("nor $t0,$t3,$t4");
-                finalCodes.add("sll $t0,$t0,31");
-                finalCodes.add("srl $t0,$t0,31");
+                finalCodes.add("seq $t0,$t1,$t2");
                 break;
             case "!=":
-                // 转化为判断(t1<t2 or t2<t1)
-                finalCodes.add("slt $t3,$t1,$t2");
-                finalCodes.add("slt $t4,$t2,$t1");
-                finalCodes.add("or $t0,$t3,$t4");
+                finalCodes.add("sne $t0,$t1,$t2");
                 break;
             default:
                 break;
