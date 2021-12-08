@@ -17,9 +17,9 @@ public class Compiler {
         final boolean finalCodePrint = true;
         ErrorArrayList errorArrayList = new ErrorArrayList();
         ArrayList<String> strings = new ArrayList<>();
-        try {
-            BufferedReader br =
-                    new BufferedReader(new InputStreamReader(new FileInputStream("testfile.txt")));
+        try {BufferedReader br =
+                new BufferedReader(new InputStreamReader(new FileInputStream("testfile.txt")));
+
             while (true) {
                 String string = br.readLine();
                 if (string == null) {

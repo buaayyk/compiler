@@ -59,6 +59,7 @@ public class MidCodeGenerator {
     }
 
     private Integer calculateExp(String string) {
+        System.out.println(string);
         ScriptEngineManager scriptEngineManager = new ScriptEngineManager();
         ScriptEngine scriptEngine = scriptEngineManager.getEngineByName("js");
         Integer eval;
