@@ -5,6 +5,7 @@ public class IdentSymbol extends Symbol {
     private final boolean isConst;
     private final ArrayList<Integer> values = new ArrayList<>();
     private int address; // 只能存相对于某一层的相对地址
+    private int index = -1;
 
     public IdentSymbol(String name, boolean isConst) {
         super(name, "ident");
@@ -16,6 +17,14 @@ public class IdentSymbol extends Symbol {
 
     public void setAddress(int address) {
         this.address = address;
+    }
+
+    public void setIndex(int index) {
+        this.index = index;
+    }
+
+    public int getIndex() {
+        return index;
     }
 
     public boolean isConst() {

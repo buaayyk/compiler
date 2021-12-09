@@ -17,9 +17,9 @@ public class Compiler {
         final boolean finalCodePrint = true;
         ErrorArrayList errorArrayList = new ErrorArrayList();
         ArrayList<String> strings = new ArrayList<>();
-        try {BufferedReader br =
-                new BufferedReader(new InputStreamReader(new FileInputStream("testfile.txt")));
-
+        try {
+            BufferedReader br =
+                    new BufferedReader(new InputStreamReader(new FileInputStream("testfile.txt")));
             while (true) {
                 String string = br.readLine();
                 if (string == null) {
@@ -67,19 +67,22 @@ public class Compiler {
             bw2.close();
         }
 
-        MidCodeGenerator midCodeGenerator = new MidCodeGenerator(compUnit, false);
+        MidCodeGenerator midCodeGenerator = new MidCodeGenerator(compUnit, true);
         midCodeGenerator.analyse();
         ArrayList<String> midCodes = midCodeGenerator.getMidCodes();
         if (midCodePrint) {
+            write(midCodes, "midCode1.txt");
+        }
+        ReplaceDuplicate replaceDuplicate = new ReplaceDuplicate(midCodes);
+        replaceDuplicate.replaceDuplicate();
+        midCodes = replaceDuplicate.getMidCodes();
+        if (midCodePrint) {
             write(midCodes, "midCode.txt");
         }
-
         FinalCodeGenerator finalCodeGenerator = new FinalCodeGenerator(midCodes);
         finalCodeGenerator.generateFinalCodes();
         ArrayList<String> finalCodes = finalCodeGenerator.getFinalCodes();
-        if (finalCodePrint) {
-            write(finalCodes, "mips.txt");
-        }
+        write(finalCodes, "mips.txt");
     }
 
     public static void write(ArrayList<String> strings, String path) throws IOException {
@@ -89,4 +92,5 @@ public class Compiler {
         }
         bw2.close();
     }
+
 }

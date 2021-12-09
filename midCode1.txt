@@ -1,0 +1,57 @@
+var int a
+a = 987
+int hhh()
+para int a
+@func_begin hhh
+@printf %d a
+@printf \n
+a = 123
+@printf %d a
+@printf \n
+ret 0
+@func_end hhh
+int main()
+@func_begin main
+var int a
+a = 1
+var int b
+@block_begin
+var int a
+a = 2
+#t0 = a + 12113
+b = #t0
+push a
+call hhh
+#t1 = RET
+b = #t1
+ret a
+@block_end
+@block_begin
+const int a
+a = 11321
+@block_end
+@block_begin
+arr int a[2121]
+a[1] = 121
+@label if_begin0_0
+#t2 = a[1]
+#t3 = #t2 > 1
+beq #t3 0 if_begin0_1
+goto if_entry0_0
+@label if_entry0_0
+@block_begin
+a[2] = 23
+@block_end
+goto if_end0
+@label if_begin0_1
+@label if_entry0_1
+@label if_end0
+#t4 = a[1]
+b = #t4
+@block_end
+@printf %d a
+@printf \n
+@getint #t5
+a = #t5
+b = a
+ret a
