@@ -172,7 +172,7 @@ public class ReplaceDuplicate {
 
     private void paraPush(String[] five) {
         String name = five[1];
-        if (!isDigit(name) || !name.startsWith("#") && !name.equals("RET")) {
+        if (!isDigit(name) && !name.startsWith("#") && !name.equals("RET")) {
             IdentSymbol identSymbol;
             identSymbol = symbolTable.searchIdentInAllLayers(name);
             int index = identSymbol.getIndex();

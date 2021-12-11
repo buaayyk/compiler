@@ -17,6 +17,9 @@ public class FinalCodeGenerator {
     private final ArrayList<Integer> depthsOfFunc = new ArrayList<>(); // 当前在函数里面套的层数---指自一个函数里面的block的层数
     private ParseMidCode parseMidCode = new ParseMidCode();
 
+    private int space; // 当前函数所需空间的大小
+    private int alloc; // 当前函数已经被占据空间的大小
+
     public FinalCodeGenerator(ArrayList<String> midCodes) {
         this.midCodes = midCodes;
         dataFinalCodes.add(".data");

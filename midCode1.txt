@@ -1,16 +1,281 @@
+const int c_common
+c_common = 10
+arr int c_array[3]
+c_array[0] = 1
+c_array[1] = 2
+c_array[2] = 3
+arr int c_matrix[9]
+c_matrix[0] = 1
+c_matrix[1] = 2
+c_matrix[2] = 3
+c_matrix[3] = 1
+c_matrix[4] = 2
+c_matrix[5] = 3
+c_matrix[6] = 1
+c_matrix[7] = 2
+c_matrix[8] = 3
+var int v_common
+arr int v_array[3]
+arr int v_matrix[9]
+var int v_commonInit
+v_commonInit = 10
+arr int v_arrayInit[3]
+v_arrayInit[0] = 1
+v_arrayInit[1] = 2
+v_arrayInit[2] = 3
+arr int v_matrixInit[9]
+v_matrixInit[0] = 1
+v_matrixInit[1] = 2
+v_matrixInit[2] = 3
+v_matrixInit[3] = 1
+v_matrixInit[4] = 2
+v_matrixInit[5] = 3
+v_matrixInit[6] = 1
+v_matrixInit[7] = 2
+v_matrixInit[8] = 3
+void print()
+para int output
+@func_begin print
+@printf \nf2()#flag#:#
+@printf %d output
+ret
+@func_end print
+int f0()
+@func_begin f0
+ret 1
+@func_end f0
+int f1()
+para int a
+para int b
+para int c
+@func_begin f1
+#t0 = a[0]
+#t1 = 3 * 0
+#t2 = #t1 + 0
+#t3 = b[#t2]
+#t4 = #t0 + #t3
+#t5 = c[0]
+#t6 = #t4 + #t5
+ret #t6
+@func_end f1
+int f2()
+para int a
+para int b
+@func_begin f2
+var int c
+var int flag
+arr int a1[2]
+a1[0] = 1
+a1[1] = 2
+arr int a2[9]
+a2[0] = 1
+a2[1] = 2
+a2[2] = 3
+a2[3] = 1
+a2[4] = 2
+a2[5] = 3
+a2[6] = 1
+a2[7] = 2
+a2[8] = 3
+#t7 = a * b
+#t8 = - #t7
+#t9 = a / b
+#t10 = #t8 + #t9
+#t11 = a % b
+#t12 = #t10 + #t11
+#t13 = #t12 - 1
+#t14 = 3 * 0
+push a1[0]
+push a2[0]
+push a2[#t14]
+call f1
+#t15 = RET
+#t16 = #t13 + #t15
+call f0
+#t17 = RET
+#t18 = + #t17
+#t19 = #t16 - #t18
+c = #t19
+@label if_begin0_0
+#t20 = a > 10
+beq #t20 0 if_begin0_1
+#t21 = b > 10
+beq #t21 0 if_begin0_1
+goto if_entry0_0
+@label if_entry0_0
+@block_begin
+#t22 = 1
+push #t22
+call print
+#t23 = RET
+flag = 0
+@block_end
+goto if_end0
+@label if_begin0_1
+@label if_entry0_1
+@label if_end0
+@label if_begin1_0
+#t24 = a > 10
+beq #t24 0 if_begin1_1
+#t25 = b <= 10
+beq #t25 0 if_begin1_1
+goto if_entry1_0
+@label if_entry1_0
+@block_begin
+#t26 = 2
+push #t26
+call print
+#t27 = RET
+flag = 0
+@block_end
+goto if_end1
+@label if_begin1_1
+@label if_entry1_1
+@label if_end1
+@label if_begin2_0
+#t28 = a <= 10
+beq #t28 0 if_begin2_1
+#t29 = b <= 10
+beq #t29 0 if_begin2_1
+goto if_entry2_0
+@label if_entry2_0
+@block_begin
+#t30 = 3
+push #t30
+call print
+#t31 = RET
+flag = 1
+@block_end
+goto if_end2
+@label if_begin2_1
+@label if_entry2_1
+@label if_end2
+@label if_begin3_0
+#t32 = a <= 10
+beq #t32 0 if_begin3_1
+#t33 = b > 10
+beq #t33 0 if_begin3_1
+goto if_entry3_0
+@label if_entry3_0
+@block_begin
+#t34 = 4
+push #t34
+call print
+#t35 = RET
+flag = 1
+@block_end
+goto if_end3
+@label if_begin3_1
+@label if_entry3_1
+@label if_end3
+ret flag
+@func_end f2
 int main()
 @func_begin main
+@printf 19373528#
+@block_begin
+@block_end
 var int a
-a = 1
+var int b
+var int flag1
+var int flag2
+var int flag
+var int i
+@getint #t36
+a = #t36
+@getint #t37
+b = #t37
+i = 0
+@label if_begin4_0
+#t38 = a != b
+beq #t38 0 if_begin4_1
+goto if_entry4_0
+@label if_entry4_0
+@block_begin
 @label loop_begin0
-#t0 = a > 0
-beq #t0 0 loop_end0
+#t39 = i < 3
+beq #t39 0 loop_end0
 goto loop_entry0
 @label loop_entry0
 @block_begin
-goto loop_end0
+var int c1
+var int c2
+#t40 = a + b
+c1 = #t40
+#t41 = a - b
+c2 = #t41
+push c1
+push c2
+call f2
+#t42 = RET
+flag1 = #t42
+push c2
+push c1
+call f2
+#t43 = RET
+flag2 = #t43
+@label if_begin5_0
+#t44 = flag1 == 0
+beq #t44 0 or0
+goto if_entry5_0
+@label or0
+#t45 = ! flag2
+beq #t45 0 if_begin5_1
+goto if_entry5_0
+@label if_entry5_0
+@block_begin
+flag = 0
+@block_end
+goto if_end5
+@label if_begin5_1
+@label if_entry5_1
+@block_begin
+flag = 1
+@block_end
+goto if_end5
+@label if_end5
+@printf \nflag#=#
+@printf %d flag
+@printf #:#c1#=#
+@printf %d c1
+@printf ,#c2#=#
+@printf %d c2
+#t46 = i + 1
+i = #t46
+#t47 = a + 5
+a = #t47
+#t48 = b + 5
+b = #t48
+@label if_begin6_0
+#t49 = i >= 10
+beq #t49 0 if_begin6_1
+goto if_entry6_0
+@label if_entry6_0
+@block_begin
 goto loop_begin0
+@block_end
+goto if_end6
+@label if_begin6_1
+@label if_entry6_1
+@label if_end6
+@label if_begin7_0
+#t50 = i < 0
+beq #t50 0 if_begin7_1
+goto if_entry7_0
+@label if_entry7_0
+@block_begin
+goto loop_end0
+@block_end
+goto if_end7
+@label if_begin7_1
+@label if_entry7_1
+@label if_end7
 @block_end
 goto loop_begin0
 @label loop_end0
-ret a
+@block_end
+goto if_end4
+@label if_begin4_1
+@label if_entry4_1
+@label if_end4
+ret 0
