@@ -48,7 +48,7 @@ public class FinalCodeGenerator {
     public void generateFinalCodes() {
         symbolTable.addNewLayer();
         getMidCode();
-        String [] five = parseMidCode.parseMidCode(midCodeNow);
+        String[] five = parseMidCode.parseMidCode(midCodeNow);
         while (five != null) {
             if (!funcStart && five[0].equals("2")) {
                 funcStart = true;
@@ -143,7 +143,7 @@ public class FinalCodeGenerator {
                     // 全局变量没有被存入符号表，因此会返回-1
                     finalCodes.add("lw $t1," + opNumber1);
                 } else {
-                    finalCodes.add("lw $t1," + offset + "($sp)");
+                    finalCodes.add("lw $t1," + (space - offset) + "($sp)");
                 }
             }
         }
@@ -158,7 +158,7 @@ public class FinalCodeGenerator {
                     // 全局变量没有被存入符号表，因此会返回-1
                     finalCodes.add("lw $t2," + opNumber2);
                 } else {
-                    finalCodes.add("lw $t2," + offset + "($sp)");
+                    finalCodes.add("lw $t2," + (space - offset) + "($sp)");
                 }
             }
         }
@@ -208,19 +208,20 @@ public class FinalCodeGenerator {
         IdentSymbol identSymbol;
         identSymbol = symbolTable.searchIdentInAllLayers(leftValue);
         if (identSymbol == null) {
-            if (leftValue.contains("#")) {
+            if (leftValue.startsWith("#")) {
                 // 临时变量之前一定没有声明过，因此新开辟空间存储
                 identSymbol = new IdentSymbol(leftValue, false);
                 symbolTable.add(identSymbol);
-                finalCodes.add("addi $sp,$sp,-4");
-                finalCodes.add("sw $t0,0($sp)");
+                alloc += 4;
+                identSymbol.setAddress(alloc);
+                finalCodes.add("sw $t0," + (space - identSymbol.getAddress()) + "($sp)");
             } else {
                 // 用户变量之前一定声明过，因此没有在符号表里面搜索到说明是一个全局变量
                 finalCodes.add("sw $t0," + leftValue);
             }
         } else {
             int offset = symbolTable.getIdentAddress(leftValue);
-            finalCodes.add("sw $t0," + offset + "($sp)");
+            finalCodes.add("sw $t0," + (space - offset) + "($sp)");
         }
     }
 
@@ -243,12 +244,80 @@ public class FinalCodeGenerator {
     }
 
     private void funcBegin(String[] five) {
+        space = 0;
+        alloc = 0;
+        for (int i = index; i < midCodes.size(); i++) {
+            String midCode = midCodes.get(i);
+            String[] five1 = parseMidCode.parseMidCode(midCode);
+            switch (five1[0]) {
+                case "1":
+                case "3":
+                case "9":
+                case "10":
+                case "14":
+                case "16":
+                case "17":
+                    space += addSpace(five1);
+                    System.out.println("==========");
+                    System.out.println(addSpace(five1));
+                    System.out.println(space);
+                    break;
+                default:
+                    break;
+            }
+            if (five1[0].equals("4")) {
+                break;
+            }
+        }
+        space += 4; // 地址寄存器的空间
+        System.out.println("func: " + five[1]);
+        System.out.println("space = " + space);
         String funcName = five[1];
         finalCodes.add(funcName + ":");
-        finalCodes.add("addi $sp,$sp,-4");
-        finalCodes.add("sw $ra,0($sp)");
-        IdentSymbol identSymbol = new IdentSymbol("$ra", false);
-        symbolTable.add(identSymbol);
+        finalCodes.add("addi $sp,$sp," + (-space));
+        alloc += 4;
+        finalCodes.add("sw $ra," + (space - alloc) + "($sp)");
+    }
+
+    // 该函数只有在进入函数之后才能使用
+    private int addSpace(String[] five) {
+        // 根据传入的语句计算需要分配多少空间
+        int space = 0;
+        switch (five[0]) {
+            case "1":
+                // 左侧临时变量分配空间
+                if (five[2].startsWith("#")) {
+                    space = 4;
+                }
+                break;
+            case "3":
+                // 地址寄存器分配空间
+                space = 4;
+                break;
+            case "9":
+                // 变量定义分配空间
+                space = 4;
+                break;
+            case "10":
+                // 常量定义分配空间
+                space = 4;
+                break;
+            case "14":
+                // 数组定义分配空间（数组空间+指针空间）
+                space = 4 + 4 * Integer.parseInt(five[2]);
+                break;
+            case "16":
+                if (five[1].startsWith("#")) {
+                    space = 4;
+                }
+                break;
+            case "17":
+                space = 4;
+                break;
+            default:
+                break;
+        }
+        return space;
     }
 
     private void funcEnd(String[] five) {
@@ -257,10 +326,8 @@ public class FinalCodeGenerator {
             finalCodes.add("li $v0,10");
             finalCodes.add("syscall");
         } else {
-            int n = depthsOfFunc.get(depthsOfFunc.size() - 1);
-            finalCodes.add("addi $sp,$sp," + (symbolTable.getLatestSpace(n) - symbolTable.getLatestRaAddress(n)));
-            finalCodes.add("lw $ra,0($sp)");
-            finalCodes.add("addi $sp,$sp,4");
+            finalCodes.add("addi $sp,$sp," + space);
+            finalCodes.add("lw $ra,-4($sp)");
             finalCodes.add("jr $ra");
             finalCodes.add("nop");
             symbolTable.removeCurrentLayer();
@@ -279,10 +346,13 @@ public class FinalCodeGenerator {
             five1 = parseMidCode.parseMidCode(midCodeNow);
         }
         index -= 1;
+        int count = 0;
         for (String[] strings : fives) {
             String paraFName = strings[1];
             IdentSymbol identSymbol = new IdentSymbol(paraFName, false);
             symbolTable.add(identSymbol);
+            count += 1;
+            identSymbol.setAddress(4 * (count - fives.size()));
         }
     }
 
@@ -309,7 +379,7 @@ public class FinalCodeGenerator {
                     // 符号表里找不到，说明一定是全局变量
                     finalCodes.add("lw $t0," + funcRExp);
                 } else {
-                    finalCodes.add("lw $t0," + (offset + 4 * n) + "($sp)");
+                    finalCodes.add("lw $t0," + (space - offset) + "($sp)");
                 }
             }
         } else {
@@ -320,22 +390,23 @@ public class FinalCodeGenerator {
             if (offset == -1) {
                 finalCodes.add("la $t0," + funcRExp);
             } else {
-                finalCodes.add("lw $t0," + (offset + 4 * n) + "($sp)");
+                finalCodes.add("lw $t0," + (space - offset) + "($sp)");
             }
             if (isDigit(offset1)) {
                 finalCodes.add("li $t1," + (4 * Integer.parseInt(offset1)));
             } else {
                 offset = symbolTable.getIdentAddress(offset1);
-                finalCodes.add("lw $t1," + (offset + 4 * n) + "($sp)");
+                finalCodes.add("lw $t1," + (space - offset) + "($sp)");
                 finalCodes.add("sll $t1,$t1,2");
             }
             finalCodes.add("add $t0,$t0,$t1");
         }
-        finalCodes.add("addi $sp,$sp,-4");
-        finalCodes.add("sw $t0,0($sp)");
+        alloc += 4;
+        finalCodes.add("sw $t0," + (space - alloc) + "($sp)");
     }
 
     private void callFunc(String[] five) {
+        finalCodes.add("addi $sp,$sp," + (space - alloc));
         finalCodes.add("jal " + five[1]);
         finalCodes.add("nop");
         int number = 0; // 形参的个数
@@ -348,7 +419,8 @@ public class FinalCodeGenerator {
                 break;
             }
         }
-        finalCodes.add("addi $sp,$sp," + 4 * number);
+        finalCodes.add("addi $sp,$sp," + (alloc - space));
+        alloc = alloc - 4 * number;
     }
 
     private void funcRet(String[] five) {
@@ -363,7 +435,7 @@ public class FinalCodeGenerator {
                     // 变量在数据区
                     finalCodes.add("lw $t0," + funcRetExp);
                 } else {
-                    finalCodes.add("lw $v0," + offset + "($sp)");
+                    finalCodes.add("lw $v0," + (space - offset) + "($sp)");
                 }
             }
         }
@@ -374,10 +446,8 @@ public class FinalCodeGenerator {
             finalCodes.add("syscall");
         } else {
             // 如果不是main函数，则释放栈空间，然后跳转回调用函数
-            int n = depthsOfFunc.get(depthsOfFunc.size() - 1);
-            finalCodes.add("addi $sp,$sp," + (symbolTable.getLatestSpace(n) - symbolTable.getLatestRaAddress(n)));
-            finalCodes.add("lw $ra,0($sp)");
-            finalCodes.add("addi $sp,$sp,4");
+            finalCodes.add("addi $sp,$sp," + space);
+            finalCodes.add("lw $ra,-4($sp)");
             finalCodes.add("jr $ra");
             finalCodes.add("nop");
         }
@@ -388,9 +458,10 @@ public class FinalCodeGenerator {
             // 如果是在数据区
             dataFinalCodes.add(five[1] + ": .space 4");
         } else {
-            finalCodes.add("addi $sp,$sp,-4");
+            alloc += 4;
             IdentSymbol identSymbol = new IdentSymbol(five[1], false);
             symbolTable.add(identSymbol);
+            identSymbol.setAddress(alloc);
         }
     }
 
@@ -399,9 +470,10 @@ public class FinalCodeGenerator {
             // 如果是在数据区
             dataFinalCodes.add(five[1] + ": .space 4");
         } else {
-            finalCodes.add("addi $sp,$sp,-4");
+            alloc += 4;
             IdentSymbol identSymbol = new IdentSymbol(five[1], true);
             symbolTable.add(identSymbol);
+            identSymbol.setAddress(alloc);
         }
     }
 
@@ -475,7 +547,6 @@ public class FinalCodeGenerator {
                     depthsOfWhile.get(depthsOfWhile.size() - 1) - 1);
         }
         depthsOfFunc.set(depthsOfFunc.size() - 1, depthsOfFunc.get(depthsOfFunc.size() - 1) - 1);
-        finalCodes.add("addi $sp,$sp," + symbolTable.getLatestSpace(1));
         symbolTable.removeCurrentLayer();
     }
 
@@ -489,27 +560,15 @@ public class FinalCodeGenerator {
             if (offset == -1) {
                 finalCodes.add("lw $t0," + opNumber1);
             } else {
-                finalCodes.add("lw $t0," + offset + "($sp)");
+                finalCodes.add("lw $t0," + (space - offset) + "($sp)");
             }
         }
-        finalCodes.add("addi $sp,$sp," + symbolTable.getLatestSpace(1));
         finalCodes.add("beq $t0,0," + label);
         finalCodes.add("nop");
-        finalCodes.add("addi $sp,$sp," + (-symbolTable.getLatestSpace(1)));
     }
 
     private void go2(String[] five) {
         String label = five[1];
-        if (label.contains("loop_begin") || label.contains("loop_end")) {
-            finalCodes.add("addi $sp,$sp," +
-                    symbolTable.getLatestSpace(depthsOfWhile.get(depthsOfWhile.size() - 1)));
-        }
-        if (label.contains("if_begin") || label.contains("if_end")) {
-            finalCodes.add("addi $sp,$sp," + symbolTable.getLatestSpace(1));
-        }
-        if (label.contains("entry")) {
-            finalCodes.add("addi $sp,$sp," + symbolTable.getLatestSpace(1));
-        }
         finalCodes.add("j " + label);
         finalCodes.add("nop");
     }
@@ -522,14 +581,17 @@ public class FinalCodeGenerator {
             dataFinalCodes.add(arrName + ": .space " + (4 * Integer.parseInt(length)));
         } else {
             IdentSymbol arrPoint = new IdentSymbol(arrName, true);
+            alloc += 4;
+            arrPoint.setAddress(alloc);
+            finalCodes.add("addi $t0,$sp," + (space - alloc - 4 * Integer.parseInt(length)));
+            finalCodes.add("sw $t0," + (space - alloc) + "($sp)");
             IdentSymbol arr = new IdentSymbol("@array " + arrName, true);
             arr.add(Integer.valueOf(length));
+            alloc += 4 * Integer.parseInt(length);
+            arr.setAddress(alloc);
             symbolTable.add(arrPoint);
             symbolTable.add(arr);
-            finalCodes.add("addi $sp,$sp,-4");
-            finalCodes.add("addi $t0,$sp," + (-4 * Integer.parseInt(length)));
-            finalCodes.add("sw $t0,0($sp)");
-            finalCodes.add("addi $sp,$sp," + (-4 * Integer.parseInt(length)));
+
         }
     }
 
@@ -547,7 +609,7 @@ public class FinalCodeGenerator {
                 if (offset1 == -1) {
                     finalCodes.add("lw $t1," + right);
                 } else {
-                    finalCodes.add("lw $t1," + offset1 + "($sp)");
+                    finalCodes.add("lw $t1," + (space - offset1) + "($sp)");
                 }
             }
         }
@@ -555,7 +617,7 @@ public class FinalCodeGenerator {
         if (offset1 == -1) {
             finalCodes.add("la $t0," + arrName);
         } else {
-            finalCodes.add("lw $t0," + offset1 + "($sp)");
+            finalCodes.add("lw $t0," + (space - offset1) + "($sp)");
         }
         if (isDigit(offset)) {
             finalCodes.add("sw $t1," + (4 * Integer.parseInt(offset)) + "($t0)");
@@ -563,9 +625,8 @@ public class FinalCodeGenerator {
             offset1 = symbolTable.getIdentAddress(offset);
             if (offset1 == -1) {
                 finalCodes.add("lw $t2," + offset);
-
             } else {
-                finalCodes.add("lw $t2," + symbolTable.getIdentAddress(offset) + "($sp)");
+                finalCodes.add("lw $t2," + (space - symbolTable.getIdentAddress(offset)) + "($sp)");
             }
             finalCodes.add("sll $t2,$t2,2");
             finalCodes.add("add $t3,$t0,$t2");
@@ -581,7 +642,7 @@ public class FinalCodeGenerator {
         if (offset1 == -1) {
             finalCodes.add("la $t0," + arrName);
         } else {
-            finalCodes.add("lw $t0," + offset1 + "($sp)");
+            finalCodes.add("lw $t0," + (space - offset1) + "($sp)");
         }
         if (isDigit(offset)) {
             finalCodes.add("lw $t1," + (4 * Integer.parseInt(offset)) + "($t0)");
@@ -589,9 +650,8 @@ public class FinalCodeGenerator {
             offset1 = symbolTable.getIdentAddress(offset);
             if (offset1 == -1) {
                 finalCodes.add("lw $t2," + offset);
-
             } else {
-                finalCodes.add("lw $t2," + symbolTable.getIdentAddress(offset) + "($sp)");
+                finalCodes.add("lw $t2," + (space - symbolTable.getIdentAddress(offset)) + "($sp)");
             }
             finalCodes.add("sll $t2,$t2,2");
             finalCodes.add("add $t1,$t0,$t2");
@@ -603,8 +663,9 @@ public class FinalCodeGenerator {
                 // 临时变量，需要新开辟空间
                 IdentSymbol identSymbol = new IdentSymbol(left, false);
                 symbolTable.add(identSymbol);
-                finalCodes.add("addi $sp,$sp,-4");
-                finalCodes.add("sw $t1,0($sp)");
+                alloc += 4;
+                identSymbol.setAddress(alloc);
+                finalCodes.add("sw $t1," + (space - identSymbol.getAddress()) + "($sp)");
             } else {
                 finalCodes.add("sw $t1," + left);
             }
@@ -619,8 +680,9 @@ public class FinalCodeGenerator {
         finalCodes.add("syscall");
         IdentSymbol identSymbol = new IdentSymbol(ident, false);
         symbolTable.add(identSymbol);
-        finalCodes.add("addi $sp,$sp,-4");
-        finalCodes.add("sw $v0,0($sp)");
+        alloc += 4;
+        identSymbol.setAddress(alloc);
+        finalCodes.add("sw $v0," + (space - identSymbol.getAddress()) + "($sp)");
     }
 
     private void printf(String[] five) {
@@ -633,7 +695,7 @@ public class FinalCodeGenerator {
                 if (offset == -1) {
                     finalCodes.add("lw $a0," + ident);
                 } else {
-                    finalCodes.add("lw $a0," + offset + "($sp)");
+                    finalCodes.add("lw $a0," + (space - offset) + "($sp)");
                 }
             }
             finalCodes.add("li $v0,1");

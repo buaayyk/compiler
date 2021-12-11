@@ -16,7 +16,12 @@ public class IdentSymbol extends Symbol {
     }
 
     public void setAddress(int address) {
+        System.out.println(getName() + ": " + address);
         this.address = address;
+    }
+
+    public int getAddress() {
+        return address;
     }
 
     public void setIndex(int index) {

@@ -39,7 +39,6 @@ public class SymbolTable {
             } else {
                 space += 4 * (identSymbol.dimension(0) * identSymbol.dimension(1));
             }
-            identSymbol.setAddress(space);
         }
         spaces.set(spaces.size() - 1, space);
     }
@@ -104,30 +103,16 @@ public class SymbolTable {
     }
 
     public int getIdentAddress(String name) {
-        int offset = 0;
-        boolean bool = false;
         for (int i = symbols.size() - 1; i >= 0; i--) {
             Symbol symbol = symbols.get(i);
             if (symbol instanceof IdentSymbol) {
                 IdentSymbol identSymbol = (IdentSymbol) symbol;
                 if (identSymbol.getName().equals(name)) {
-                    bool = true;
-                    break;
-                }
-                if (identSymbol.numberOfDimensions() == 0) {
-                    offset += 4;
-                } else if (identSymbol.numberOfDimensions() == 1) {
-                    offset += 4 * identSymbol.dimension(0);
-                } else {
-                    offset += 4 * (identSymbol.dimension(0) * identSymbol.dimension(1));
+                    return identSymbol.getAddress();
                 }
             }
         }
-        if (!bool) {
-            // 没找到标识符，则返回-1
-            return -1;
-        } else {
-            return offset;
-        }
+        // 没找到标识符，则返回-1
+        return -1;
     }
 }
