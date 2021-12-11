@@ -109,6 +109,14 @@ public class BlockSplit {
     public ArrayList<Block> getBlocks() {
         return blocks;
     }
+
+    public ArrayList<Integer> getStarts() {
+        ArrayList<Integer> starts = new ArrayList<>(start2Block.keySet());
+        Collections.sort(starts);
+        starts.add(codes.size());
+        return starts;
+    }
+
     public static void main(String[] args) throws IOException {
         final boolean grammaticalAnalysisPrint = false;
         final boolean errorPrint = false;

@@ -1,4 +1,5 @@
 import java.util.ArrayList;
+import java.util.Queue;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -20,10 +21,15 @@ public class FinalCodeGenerator {
     private int space; // 当前函数所需空间的大小
     private int alloc; // 当前函数已经被占据空间的大小
 
+    private BlockSplit blockSplit;
+    private ArrayList<Integer> starts;
+    private RegPool regPool;
+
     public FinalCodeGenerator(ArrayList<String> midCodes) {
         this.midCodes = midCodes;
         dataFinalCodes.add(".data");
         finalCodes.add(".text");
+        regPool = new RegPool(midCodes, finalCodes, symbolTable, parseMidCode);
     }
 
     private boolean isDigit(String s) {
@@ -45,11 +51,19 @@ public class FinalCodeGenerator {
         }
     }
 
+    private String allocS(String var) {
+        return "";
+    }
+
     public void generateFinalCodes() {
         symbolTable.addNewLayer();
         getMidCode();
         String[] five = parseMidCode.parseMidCode(midCodeNow);
         while (five != null) {
+            if (starts.contains(index) && starts.get(starts.size() - 1) != index) {
+                starts.remove(0);
+                regPool.updateBlock(index, index + starts.get(0));
+            }
             if (!funcStart && five[0].equals("2")) {
                 funcStart = true;
                 finalCodes.add("j main");
@@ -246,6 +260,7 @@ public class FinalCodeGenerator {
     private void funcBegin(String[] five) {
         space = 0;
         alloc = 0;
+        int count = 0; // 记录函数块的大小
         for (int i = index; i < midCodes.size(); i++) {
             String midCode = midCodes.get(i);
             String[] five1 = parseMidCode.parseMidCode(midCode);
@@ -265,10 +280,19 @@ public class FinalCodeGenerator {
                 default:
                     break;
             }
+            count += 1;
             if (five1[0].equals("4")) {
                 break;
             }
         }
+
+        blockSplit = new BlockSplit(new ArrayList<>(midCodes.subList(index, index + count)));
+        blockSplit.blockSplit();
+        starts = blockSplit.getStarts();
+        regPool.setSpace(space);
+        starts.remove(0);
+        regPool.updateBlock(index, index + starts.get(0));
+
         space += 4; // 地址寄存器的空间
         System.out.println("func: " + five[1]);
         System.out.println("space = " + space);

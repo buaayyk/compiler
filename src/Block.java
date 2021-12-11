@@ -6,6 +6,7 @@ import java.util.regex.Pattern;
 
 public class Block {
     private final int index;
+    private final ArrayList<String> splitCodes;
     private ArrayList<ArrayList<HashSet<String>>> codes = new ArrayList<>();
     private final HashSet<Block> pre = new HashSet<>();
     private final HashSet<Block> next = new HashSet<>();
@@ -20,11 +21,12 @@ public class Block {
     private HashSet<String> arriveIn = new HashSet<>();
     private HashSet<String> arriveOut = new HashSet<>();
 
-    public Block(Integer index, ArrayList<String> initialCodes) {
+    public Block(Integer index, ArrayList<String> splitCodes) {
         this.index = index;
+        this.splitCodes = splitCodes;
         String[] five;
-        for (String initialCode : initialCodes) {
-            five = parseMidCode.parseMidCode(initialCode);
+        for (String splitCode : splitCodes) {
+            five = parseMidCode.parseMidCode(splitCode);
             switch (five[0]) {
                 // 值得注意的是变量、常量声明的时候不需要认为它们已经产生,但是数组声明的时候由于需要给指针赋值，因此认为已经产生
                 case "1":

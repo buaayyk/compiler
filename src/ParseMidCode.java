@@ -48,7 +48,7 @@ public class ParseMidCode {
             five[0] = "5";
             five[1] = splitMidCodeNow[2];
         } else if (splitMidCodeNow[0].equals("push")) {
-            // 6 实参压栈 [实参名]
+            // 6 实参压栈 [实参名,数组位置]
             five[0] = "6";
             if (splitMidCodeNow[1].contains("[")) {
                 five[1] = splitMidCodeNow[1].split("\\[")[0];
