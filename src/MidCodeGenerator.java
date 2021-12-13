@@ -414,6 +414,7 @@ public class MidCodeGenerator {
         symbolTable.addNewLayer();
         analyse(block);
         symbolTable.removeCurrentLayer();
+        midCodes.add("@func_end main");
     }
 
     private void analyseStmt(NonTerminalWord stmt) {

@@ -24,6 +24,7 @@ public class BlockSplit {
                 label2index.put(five[1], i);
             }
         }
+        System.out.println(label2index.keySet());
         for (int i = 0; i < codes.size(); i++) {
             code = codes.get(i);
             five = parseMidCode.parseMidCode(code);
@@ -111,9 +112,18 @@ public class BlockSplit {
     }
 
     public ArrayList<Integer> getStarts() {
-        ArrayList<Integer> starts = new ArrayList<>(start2Block.keySet());
+        HashSet<Integer> hashSet = new HashSet<>(start2Block.keySet());
+        for (int i = 0; i < codes.size(); i++) {
+            String code = codes.get(i);
+            if (code.equals("@block_end")) {
+                hashSet.add(i + 1);
+            }
+        }
+        ArrayList<Integer> starts = new ArrayList<>(hashSet);
         Collections.sort(starts);
         starts.add(codes.size());
+
+        System.out.println("blockSplit: " + starts);
         return starts;
     }
 
