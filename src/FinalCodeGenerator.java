@@ -88,7 +88,8 @@ public class FinalCodeGenerator {
             if (midCodeNow.equals("@block_end") && starts.contains(index) && index != 0) {
                 // 对于block_end需要特殊处理，因为block_end可能会丢弃一些变量的地址
                 System.out.println("!!!!!!!!!!!!!!!" + midCodeNow);
-                regPool.writeBackAll(five);
+                regPool.writeBackAll(five, true);
+                // 基本快结尾不需要写回临时变量
                 regPool.flush();
             }
             System.out.println("paras sss:" + paras);
@@ -159,7 +160,7 @@ public class FinalCodeGenerator {
             }
             if (starts.contains(index) && index != 0) {
                 System.out.println("!!!!!!!!!!!!!!!" + midCodeNow);
-                regPool.writeBackAll(five);
+                regPool.writeBackAll(five, true);
                 regPool.flush();
             }
             getMidCode();
@@ -615,7 +616,7 @@ public class FinalCodeGenerator {
         for (int i = 0; i < starts.size(); i++) {
             starts.set(i, starts.get(i) + index - 1);
         }
-        regPool.writeBackAll(five);
+        regPool.writeBackAll(five,true);
         regPool.flush();
         regPool.setSpace(space);
         System.out.println("func: " + midCodeNow);
@@ -815,7 +816,7 @@ public class FinalCodeGenerator {
 
     private void callFunc(String[] five) {
 
-        regPool.writeBackAll(five);
+        regPool.writeBackAll(five,false); // 调用函数一般在基本块中间，因此临时变量需要写回
         regPool.flush();
         finalCodes.add("addi $sp,$sp," + (space - alloc));
         finalCodes.add("jal " + five[1]);

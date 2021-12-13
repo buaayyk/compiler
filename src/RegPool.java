@@ -51,7 +51,8 @@ public class RegPool {
         }
     }
 
-    public void writeBackAll(String[] five) {
+    public void writeBackAll(String[] five, boolean temp) {
+        // temp表示临时变量不写回
         System.out.println("writeBack: ");
         System.out.println(five[0] + " " + five[1] + " " + five[2] + " " + five[3] + " " + five[4]);
         for (String reg : tRegs.keySet()) {
@@ -59,15 +60,19 @@ public class RegPool {
             System.out.println("var: " + tRegs.get(reg));
             System.out.println("dirty:" + dirty.get(reg));
             if (five[0].equals("12") || five[0].equals("13")) {
-                writeBack(reg, true);
+                writeBack(reg, true, temp);
             } else {
-                writeBack(reg, false);
+                writeBack(reg, false, temp);
             }
         }
     }
 
-    private void writeBack(String reg, boolean jump) {
+    private void writeBack(String reg, boolean jump, boolean temp) {
         String var = tRegs.get(reg);
+        if (temp && var.startsWith("#")) {
+            // 临时变量不写回
+            return;
+        }
         System.out.println("@@@@@@@@@@@@@@@@@@@@@@@@@@@@");
         System.out.println(var);
         if (!var.equals("") && dirty.get(reg)) {
@@ -147,7 +152,7 @@ public class RegPool {
             }
         }
         String allocReg = occupiedRegs.get(0);
-        writeBack(occupiedRegs.get(0), false);
+        writeBack(occupiedRegs.get(0), false, false); // 被占用的变量之后可能有用，因此需要写回
         if (write) {
             dirty.put(allocReg, true);
         } else {
