@@ -8,9 +8,11 @@ public class BlockSplit {
     private final HashSet<Integer> blockStart = new HashSet<>();
     private final HashMap<Integer, Block> start2Block = new HashMap<>();
     private final ArrayList<Block> blocks = new ArrayList<>();
+    private final ArrayList<String> otherVars;
 
-    public BlockSplit(ArrayList<String> codes) {
+    public BlockSplit(ArrayList<String> codes,ArrayList<String> otherVars) {
         this.codes = codes;
+        this.otherVars = otherVars;
     }
 
     public void blockSplit() {
@@ -24,7 +26,6 @@ public class BlockSplit {
                 label2index.put(five[1], i);
             }
         }
-        System.out.println(label2index.keySet());
         for (int i = 0; i < codes.size(); i++) {
             code = codes.get(i);
             five = parseMidCode.parseMidCode(code);
@@ -53,14 +54,18 @@ public class BlockSplit {
                     break;
             }
         }
-        int number = 0;
         blockStart.add(0);
         blockStart.add(codes.size());
+        for (int i = 0; i < codes.size(); i++) {
+            code = codes.get(i);
+            if (code.equals("@block_end")) {
+                blockStart.add(i + 1);
+            }
+        }
         ArrayList<Integer> starts = new ArrayList<>(blockStart);
         Collections.sort(starts);
         for (int i = 0; i < starts.size() - 1; i++) {
-            Block block = new Block(number, new ArrayList<>(codes.subList(starts.get(i), starts.get(i + 1))));
-            number += 1;
+            Block block = new Block(starts.get(i), new ArrayList<>(codes.subList(starts.get(i), starts.get(i + 1))),otherVars);
             start2Block.put(starts.get(i), block);
         }
         for (int i = 0; i < starts.size() - 1; i++) {
@@ -123,7 +128,6 @@ public class BlockSplit {
         Collections.sort(starts);
         starts.add(codes.size());
 
-        System.out.println("blockSplit: " + starts);
         return starts;
     }
 
@@ -196,7 +200,7 @@ public class BlockSplit {
         if (midCodePrint) {
             write(midCodes, "midCode.txt");
         }
-        BlockSplit blockSplit = new BlockSplit(midCodes);
+        BlockSplit blockSplit = new BlockSplit(midCodes,new ArrayList<>());
         blockSplit.blockSplit();
         FinalCodeGenerator finalCodeGenerator = new FinalCodeGenerator(midCodes);
         finalCodeGenerator.generateFinalCodes();

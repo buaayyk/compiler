@@ -6,7 +6,7 @@ import java.util.regex.Pattern;
 
 public class Block {
     private final int index;
-    private final ArrayList<String> splitCodes;
+    public final ArrayList<String> splitCodes;
     private ArrayList<ArrayList<HashSet<String>>> codes = new ArrayList<>();
     private final HashSet<Block> pre = new HashSet<>();
     private final HashSet<Block> next = new HashSet<>();
@@ -20,8 +20,10 @@ public class Block {
     private HashSet<String> gen = new HashSet<>();
     private HashSet<String> arriveIn = new HashSet<>();
     private HashSet<String> arriveOut = new HashSet<>();
+    private HashSet<String> otherVars;
 
-    public Block(Integer index, ArrayList<String> splitCodes) {
+    public Block(Integer index, ArrayList<String> splitCodes, ArrayList<String> otherVars) {
+        this.otherVars = new HashSet<>(otherVars);
         this.index = index;
         this.splitCodes = splitCodes;
         String[] five;
@@ -67,6 +69,10 @@ public class Block {
         calDefAndUse();
     }
 
+    public int size() {
+        return codes.size();
+    }
+
     private void calDefAndUse() {
         for (ArrayList<HashSet<String>> code : codes) {
             HashSet<String> lSet = code.get(0);
@@ -95,6 +101,9 @@ public class Block {
     }
 
     public boolean calActiveIn() {
+        if (index == 40) {
+            int b = 1;
+        }
         int size = activeIn.size();
         HashSet<String> a = new HashSet<>(use);
         HashSet<String> b = new HashSet<>(activeOut);
@@ -191,7 +200,7 @@ public class Block {
     }
 
     public HashSet<String> getActiveIn() {
-        return activeIn;
+        return new HashSet<>(activeIn);
     }
 
     public void addActiveOut(String a) {
@@ -199,7 +208,7 @@ public class Block {
     }
 
     public HashSet<String> getActiveOut() {
-        return activeOut;
+        return new HashSet<>(activeOut);
     }
 
     public void addPre(Block block) {
@@ -216,13 +225,13 @@ public class Block {
         String l = five[2];
         String r1 = five[3];
         String r2 = five[4];
-        if (!isDigit(l) && !l.startsWith("#") && !l.equals("RET")) {
+        if (!isDigit(l) && !l.startsWith("#") && !l.equals("RET") && !otherVars.contains(l)) {
             lSet.add(l);
         }
-        if (!isDigit(r1) && !r1.startsWith("#") && !r1.equals("RET")) {
+        if (!isDigit(r1) && !r1.startsWith("#") && !r1.equals("RET") && !otherVars.contains(r1)) {
             rSet.add(r1);
         }
-        if (!isDigit(r2) && !r2.startsWith("#") && !r2.equals("RET")) {
+        if (!isDigit(r2) && !r2.startsWith("#") && !r2.equals("RET") && !otherVars.contains(r2)) {
             rSet.add(r2);
         }
         ArrayList<HashSet<String>> arrayList = new ArrayList<>();
@@ -236,7 +245,7 @@ public class Block {
         HashSet<String> lSet = new HashSet<>();
         HashSet<String> rSet = new HashSet<>();
         String l = five[1];
-        if (!isDigit(l) && !l.startsWith("#") && !l.equals("RET")) {
+        if (!isDigit(l) && !l.startsWith("#") && !l.equals("RET") && !otherVars.contains(l)) {
             lSet.add(l);
         }
         ArrayList<HashSet<String>> arrayList = new ArrayList<>();
@@ -250,7 +259,7 @@ public class Block {
         HashSet<String> lSet = new HashSet<>();
         HashSet<String> rSet = new HashSet<>();
         String r = five[1];
-        if (!isDigit(r) && !r.startsWith("#") && !r.equals("RET")) {
+        if (!isDigit(r) && !r.startsWith("#") && !r.equals("RET") && !otherVars.contains(r)) {
             rSet.add(r);
         }
         ArrayList<HashSet<String>> arrayList = new ArrayList<>();
@@ -263,7 +272,7 @@ public class Block {
         HashSet<String> lSet = new HashSet<>();
         HashSet<String> rSet = new HashSet<>();
         String r = five[1];
-        if (!isDigit(r) && !r.startsWith("#") && !r.equals("RET")) {
+        if (!isDigit(r) && !r.startsWith("#") && !r.equals("RET") && !otherVars.contains(r)) {
             rSet.add(r);
         }
         ArrayList<HashSet<String>> arrayList = new ArrayList<>();
@@ -277,10 +286,10 @@ public class Block {
         HashSet<String> rSet = new HashSet<>();
         String r1 = five[1];
         String r2 = five[2];
-        if (!isDigit(r1) && !r1.startsWith("#") && !r1.equals("RET")) {
+        if (!isDigit(r1) && !r1.startsWith("#") && !r1.equals("RET") && !otherVars.contains(r1)) {
             rSet.add(r1);
         }
-        if (!isDigit(r2) && !r2.startsWith("#") && !r2.equals("RET")) {
+        if (!isDigit(r2) && !r2.startsWith("#") && !r2.equals("RET") && !otherVars.contains(r2)) {
             rSet.add(r2);
         }
         ArrayList<HashSet<String>> arrayList = new ArrayList<>();
@@ -293,7 +302,7 @@ public class Block {
         HashSet<String> lSet = new HashSet<>();
         HashSet<String> rSet = new HashSet<>();
         String arrName = five[1];
-        if (!isDigit(arrName) && !arrName.startsWith("#") && !arrName.equals("RET")) {
+        if (!isDigit(arrName) && !arrName.startsWith("#") && !arrName.equals("RET") && !otherVars.contains(arrName)) {
             // 虽然数组在左边，但实际上是一个被引用变量
             lSet.add(arrName);
         }
@@ -309,15 +318,15 @@ public class Block {
         String l1 = five[1];
         String l2 = five[2];
         String r = five[3];
-        if (!isDigit(l1) && !l1.startsWith("#") && !l1.equals("RET")) {
+        if (!isDigit(l1) && !l1.startsWith("#") && !l1.equals("RET") && !otherVars.contains(l1)) {
             // 虽然数组在左边，但实际上是一个被引用变量
             rSet.add(l1);
         }
-        if (!isDigit(l2) && !l2.startsWith("#") && !l2.equals("RET")) {
+        if (!isDigit(l2) && !l2.startsWith("#") && !l2.equals("RET") && !otherVars.contains(l2)) {
             // 虽然偏移在左边，但实际上是一个被引用变量
             rSet.add(l2);
         }
-        if (!isDigit(r) && !r.startsWith("#") && !r.equals("RET")) {
+        if (!isDigit(r) && !r.startsWith("#") && !r.equals("RET") && !otherVars.contains(r)) {
             rSet.add(r);
         }
         ArrayList<HashSet<String>> arrayList = new ArrayList<>();
@@ -332,13 +341,13 @@ public class Block {
         String l = five[1];
         String r1 = five[2];
         String r2 = five[3];
-        if (!isDigit(l) && !l.startsWith("#") && !l.equals("RET")) {
+        if (!isDigit(l) && !l.startsWith("#") && !l.equals("RET") && !otherVars.contains(l)) {
             lSet.add(l);
         }
-        if (!isDigit(r1) && !r1.startsWith("#") && !r1.equals("RET")) {
+        if (!isDigit(r1) && !r1.startsWith("#") && !r1.equals("RET") && !otherVars.contains(r1)) {
             rSet.add(r1);
         }
-        if (!isDigit(r2) && !r2.startsWith("#") && !r2.equals("RET")) {
+        if (!isDigit(r2) && !r2.startsWith("#") && !r2.equals("RET") && !otherVars.contains(r2)) {
             rSet.add(r2);
         }
         ArrayList<HashSet<String>> arrayList = new ArrayList<>();
@@ -351,7 +360,7 @@ public class Block {
         HashSet<String> lSet = new HashSet<>();
         HashSet<String> rSet = new HashSet<>();
         String r = five[1];
-        if (!isDigit(r) && !r.startsWith("#") && !r.equals("RET")) {
+        if (!isDigit(r) && !r.startsWith("#") && !r.equals("RET") && !otherVars.contains(r)) {
             rSet.add(r);
         }
         ArrayList<HashSet<String>> arrayList = new ArrayList<>();
@@ -365,7 +374,7 @@ public class Block {
         HashSet<String> rSet = new HashSet<>();
         if (five[1].equals("%d")) {
             String r = five[2];
-            if (!isDigit(r) && !r.startsWith("#") && !r.equals("RET")) {
+            if (!isDigit(r) && !r.startsWith("#") && !r.equals("RET") && !otherVars.contains(r)) {
                 rSet.add(r);
             }
         }

@@ -1,4 +1,6 @@
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -24,8 +26,14 @@ public class FinalCodeGenerator {
     private ArrayList<Integer> starts;
     private RegPool regPool;
     private ArrayList<String> paras = new ArrayList<>(); // 当前函数中分配到了a寄存器的形参
+    private ArrayList<String> otherParas = new ArrayList<>(); // 没有分配到a寄存器的形参
     private boolean writeBackPara = false; // 是否在push参数前写回了所有的a寄存器
     private ArrayList<String> tempParas = new ArrayList<>();// 在形参作为实参压栈的时候临时存储所有形参
+
+    private HashMap<String, String> var2sReg = new HashMap<>();
+    private ArrayList<Block> blocks;
+    private int blocksOffset;
+    private ArrayList<String> allFieldsVar = new ArrayList<>();
 
     public FinalCodeGenerator(ArrayList<String> midCodes) {
         this.midCodes = midCodes;
@@ -55,7 +63,8 @@ public class FinalCodeGenerator {
     }
 
     private String allocS(String var) {
-        return "";
+        // 源代码中变量的全局寄存分配方式
+        return var2sReg.getOrDefault(var, "");
     }
 
     public void generateFinalCodes() {
@@ -73,11 +82,10 @@ public class FinalCodeGenerator {
         getMidCode();
         String[] five = parseMidCode.parseMidCode(midCodeNow);
         while (five != null) {
+
             if (starts.contains(index - 1) && starts.get(starts.size() - 1) != index - 1) {
                 starts.remove(0);
                 // 进入基本块前清空临时寄存器池
-                System.out.println("index: " + (index - 1));
-                System.out.println("更新block前的starts :" + starts);
                 regPool.updateBlock(index - 1, starts.get(0));
             }
             if (!funcStart && five[0].equals("2")) {
@@ -87,13 +95,10 @@ public class FinalCodeGenerator {
             }
             if (midCodeNow.equals("@block_end") && starts.contains(index) && index != 0) {
                 // 对于block_end需要特殊处理，因为block_end可能会丢弃一些变量的地址
-                System.out.println("!!!!!!!!!!!!!!!" + midCodeNow);
                 regPool.writeBackAll(five, true);
                 // 基本快结尾不需要写回临时变量
                 regPool.flush();
             }
-            System.out.println("paras sss:" + paras);
-            System.out.println(midCodeNow);
             switch (five[0]) {
                 case "1":
                     exp(five);
@@ -159,7 +164,6 @@ public class FinalCodeGenerator {
                     break;
             }
             if (starts.contains(index) && index != 0) {
-                System.out.println("!!!!!!!!!!!!!!!" + midCodeNow);
                 regPool.writeBackAll(five, true);
                 regPool.flush();
             }
@@ -564,18 +568,20 @@ public class FinalCodeGenerator {
         symbolTable.addNewLayer();
         depthsOfFunc.add(1);
         paras.clear();
+        otherParas.clear();
         int count = 0;
         // 记录所有通过a寄存器传值的变量名
         for (int i = index; i < midCodes.size(); i++) {
             String midCode = midCodes.get(i);
             String[] five1 = parseMidCode.parseMidCode(midCode);
             if (five1[0].equals("5")) {
-                paras.add(five1[1]);
-                count += 1;
-                if (count >= 4) {
-                    // 最多只有4个形参存入寄存器
-                    break;
+                if (count < 4) {
+                    paras.add(five1[1]);
+                } else {
+                    // 最多只有4个形参存入寄存器,多出来的需要存在栈上
+                    otherParas.add(five1[1]);
                 }
+                count += 1;
             } else {
                 break;
             }
@@ -610,20 +616,34 @@ public class FinalCodeGenerator {
 
         space += 4; // 地址寄存器的空间
 
-        blockSplit = new BlockSplit(new ArrayList<>(midCodes.subList(index - 1, index - 1 + count)));
+        ArrayList<String> arrayList = new ArrayList<>(allFieldsVar);
+        arrayList.addAll(paras);
+        // 这些变量不会去分全局寄存器
+        if(five[1].equals("main")){
+            int b =  1;
+        }
+        blockSplit = new BlockSplit(new ArrayList<>(midCodes.subList(index - 1, index - 1 + count)), arrayList);
         blockSplit.blockSplit();
+        blocksOffset = index - 1;
+
+        blocks = blockSplit.getBlocks();  // 代码分块
+        ActiveAnalysis activeAnalysis = new ActiveAnalysis(blocks);
+        activeAnalysis.analyse(); // 活跃变量分析
+        ConflictMap conflictMap = new ConflictMap(blocks);
+        conflictMap.graphColoring(8); // 只用8个s寄存器的图着色
+        var2sReg = conflictMap.getVar2sReg();
+        System.out.println(five[1]);
+        System.out.println(var2sReg);
+        System.out.println(var2sReg.values());
+
         starts = blockSplit.getStarts();
         for (int i = 0; i < starts.size(); i++) {
             starts.set(i, starts.get(i) + index - 1);
         }
-        regPool.writeBackAll(five,true);
+        regPool.writeBackAll(five, true);
         regPool.flush();
         regPool.setSpace(space);
-        System.out.println("func: " + midCodeNow);
-        System.out.println("space: " + space);
         starts.remove(0);
-        System.out.println("index: " + (index - 1));
-        System.out.println("更新block前的starts :" + starts);
         regPool.updateBlock(index - 1, starts.get(0));
 
         String funcName = five[1];
@@ -631,6 +651,16 @@ public class FinalCodeGenerator {
         finalCodes.add("addi $sp,$sp," + (-space));
         alloc += 4;
         finalCodes.add("sw $ra," + (space - alloc) + "($sp)");
+        System.out.println(otherParas);
+        for (String otherPara : otherParas) {
+            if (!allocS(otherPara).equals("")) {
+                // 如果形参被分配了全局寄存器
+                System.out.println("???????????????????????");
+                IdentSymbol identSymbol = symbolTable.searchIdentInAllLayers(otherPara);
+                String reg = allocS(otherPara);
+                finalCodes.add("lw " + reg + "," + (space - identSymbol.getAddress()) + "($sp)");
+            }
+        }
     }
 
     // 该函数只有在进入函数之后才能使用
@@ -717,7 +747,6 @@ public class FinalCodeGenerator {
                 IdentSymbol identSymbol = symbolTable.searchIdentInAllLayers(paras.get(i));
                 finalCodes.add("sw $a" + i + "," + (space - identSymbol.getAddress()) + "($sp)");
             }
-            System.out.println("my paras :" + tempParas);
             tempParas = new ArrayList<>(paras);
             paras.clear();
             writeBackPara = true;
@@ -815,8 +844,38 @@ public class FinalCodeGenerator {
     }
 
     private void callFunc(String[] five) {
+        // TODO, 此处需要分析活跃变量
+        HashSet<String> activeVars = new HashSet<>();
+        Block block = new Block(-1, new ArrayList<>(), new ArrayList<>());
+        for (Block block1 : blocks) {
+            if (block1.getIndex() + blocksOffset <= index - 1
+                    && index - 1 < block1.getIndex() + block1.size() + blocksOffset) {
+                block = block1;
+            }
+        }
+        ArrayList<ArrayList<HashSet<String>>> codes = block.getCodes();
+        System.out.println(block.splitCodes);
+        activeVars = block.getActiveOut();
+        System.out.println("函数名：" + five[1]);
+        System.out.println(activeVars);
+        for (int i = blocksOffset + block.getIndex() + block.size() - 1; i >= index - 1; i--) {
+            ArrayList<HashSet<String>> code = codes.get(i - blocksOffset - block.getIndex());
+            HashSet<String> defs = code.get(0);
+            HashSet<String> uses = code.get(1);
+            activeVars.removeAll(defs);
+            activeVars.addAll(uses);
+        }
+        System.out.println(activeVars);
+        for (String name : activeVars) {
+            String reg = allocS(name);
+            if (!reg.equals("")) {
+                // 把活跃变量写回对应地址
+                IdentSymbol identSymbol = symbolTable.searchIdentInAllLayers(name);
+                finalCodes.add("sw " + reg + "," + (space - identSymbol.getAddress()) + "($sp)");
+            }
+        }
 
-        regPool.writeBackAll(five,false); // 调用函数一般在基本块中间，因此临时变量需要写回
+        regPool.writeBackAll(five, false); // 调用函数一般在基本块中间，因此临时变量需要写回
         regPool.flush();
         finalCodes.add("addi $sp,$sp," + (space - alloc));
         finalCodes.add("jal " + five[1]);
@@ -839,11 +898,19 @@ public class FinalCodeGenerator {
             for (int i = 0; i < paras.size(); i++) {
                 IdentSymbol identSymbol = symbolTable.searchIdentInAllLayers(paras.get(i));
                 finalCodes.add("lw $a" + i + "," + (space - identSymbol.getAddress()) + "($sp)");
-//            finalCodes.add("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%");
             }
         }
         writeBackPara = false;
         alloc = alloc - 4 * number;
+
+        for (String name : activeVars) {
+            String reg = allocS(name);
+            if (!reg.equals("")) {
+                // 把活跃变量对应的寄存器恢复
+                IdentSymbol identSymbol = symbolTable.searchIdentInAllLayers(name);
+                finalCodes.add("lw " + reg + "," + (space - identSymbol.getAddress()) + "($sp)");
+            }
+        }
     }
 
     private void funcRet(String[] five) {
@@ -890,6 +957,7 @@ public class FinalCodeGenerator {
         if (!funcStart) {
             // 如果是在数据区
             dataFinalCodes.add(five[1] + ": .space 4");
+            allFieldsVar.add(five[1]);
         } else {
             alloc += 4;
             IdentSymbol identSymbol = new IdentSymbol(five[1], false);
@@ -902,6 +970,7 @@ public class FinalCodeGenerator {
         if (!funcStart) {
             // 如果是在数据区
             dataFinalCodes.add(five[1] + ": .space 4");
+            allFieldsVar.add(five[1]);
         } else {
             alloc += 4;
             IdentSymbol identSymbol = new IdentSymbol(five[1], true);
@@ -1026,12 +1095,21 @@ public class FinalCodeGenerator {
         if (!funcStart) {
             // 如果是在数据区
             dataFinalCodes.add(arrName + ": .space " + (4 * Integer.parseInt(length)));
+            allFieldsVar.add(five[1]);
         } else {
             IdentSymbol arrPoint = new IdentSymbol(arrName, true);
             alloc += 4;
             arrPoint.setAddress(alloc);
-            finalCodes.add("addi $t8,$sp," + (space - alloc - 4 * Integer.parseInt(length)));
-            finalCodes.add("sw $t8," + (space - alloc) + "($sp)");
+
+            String reg;
+            if (allocS(arrName).equals("")) {
+                reg = regPool.allocReg(arrName, index - 1, true, new ArrayList<>());
+            } else {
+                reg = allocS(arrName);
+            }
+            finalCodes.add("addi " + reg + ",$sp," + (space - alloc - 4 * Integer.parseInt(length)));
+            finalCodes.add("sw " + reg + "," + (space - alloc) + "($sp)");
+
             IdentSymbol arr = new IdentSymbol("@array " + arrName, true);
             arr.add(Integer.valueOf(length));
             alloc += 4 * Integer.parseInt(length);
@@ -1069,7 +1147,7 @@ public class FinalCodeGenerator {
                         deny.add(arrName);
                         reg2 = regPool.allocReg(offset, index - 1, false, deny);
                     } else {
-                        reg2 = allocS(arrName);
+                        reg2 = allocS(offset);
                     }
                 }
             }
@@ -1157,7 +1235,7 @@ public class FinalCodeGenerator {
                         deny.add(arrName);
                         reg3 = regPool.allocReg(offset, index - 1, false, deny);
                     } else {
-                        reg3 = allocS(arrName);
+                        reg3 = allocS(offset);
                     }
                 }
             }
@@ -1205,11 +1283,11 @@ public class FinalCodeGenerator {
             } else {
                 if (allocS(left).equals("")) {
                     ArrayList<String> deny = new ArrayList<>();
-                    deny.add(left);
+                    deny.add(arrName);
                     deny.add(offset);
-                    reg1 = regPool.allocReg(arrName, index - 1, false, deny);
+                    reg1 = regPool.allocReg(left, index - 1, false, deny);
                 } else {
-                    reg1 = allocS(arrName);
+                    reg1 = allocS(left);
                 }
             }
             finalCodes.add("lw " + reg1 + ",0($t8)");

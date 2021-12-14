@@ -53,12 +53,7 @@ public class RegPool {
 
     public void writeBackAll(String[] five, boolean temp) {
         // temp表示临时变量不写回
-        System.out.println("writeBack: ");
-        System.out.println(five[0] + " " + five[1] + " " + five[2] + " " + five[3] + " " + five[4]);
         for (String reg : tRegs.keySet()) {
-            System.out.println(reg);
-            System.out.println("var: " + tRegs.get(reg));
-            System.out.println("dirty:" + dirty.get(reg));
             if (five[0].equals("12") || five[0].equals("13")) {
                 writeBack(reg, true, temp);
             } else {
@@ -73,24 +68,16 @@ public class RegPool {
             // 临时变量不写回
             return;
         }
-        System.out.println("@@@@@@@@@@@@@@@@@@@@@@@@@@@@");
-        System.out.println(var);
         if (!var.equals("") && dirty.get(reg)) {
             IdentSymbol identSymbol = symbolTable.searchIdentInAllLayers(var);
             if (jump) {
                 // 如果是跳转语句，需要在跳转语句之前写回
-                System.out.println(var);
-                if (identSymbol == null) {
-                    System.out.println("ppppppppppppppppppppppppppppppppppp");
-                }
                 finalCodes.add(finalCodes.size() - 2, "sw " + reg + "," + (space - identSymbol.getAddress()) + "($sp)");
             } else {
                 // 非跳转语句可可以在之后写回
                 finalCodes.add("sw " + reg + "," + (space - identSymbol.getAddress()) + "($sp)");
             }
-            System.out.println("sw " + reg + "," + (space - identSymbol.getAddress()) + "($sp)");
         }
-        System.out.println("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@");
     }
 
     public void setSpace(int space) {
@@ -98,9 +85,6 @@ public class RegPool {
     }
 
     public String allocReg(String var, int index, boolean write, ArrayList<String> deny) {
-        System.out.println("regPool space:" + space);
-        System.out.println("var :" + var);
-        System.out.println("分配前： " + tRegs.values());
         // write表示是否写, deny表示该次分配禁止占用的寄存器对应的变量名
         ArrayList<String> freeRegs = new ArrayList<>();
         for (String reg : tRegs.keySet()) {
@@ -109,7 +93,6 @@ public class RegPool {
                 if (write) {
                     dirty.put(reg, true);
                 }
-                System.out.println("分配后： " + tRegs.values());
                 return reg;
             }
             if (var1.equals("")) {
@@ -127,7 +110,6 @@ public class RegPool {
                 finalCodes.add("lw " + freerReg + "," + (space - identSymbol.getAddress()) + "($sp)");
             }
             tRegs.put(freerReg, var);
-            System.out.println("分配后： " + tRegs.values());
             return freerReg;
         }
         deny.removeIf(e -> isDigit(e));
@@ -138,9 +120,6 @@ public class RegPool {
                 occupiedRegs.add(reg);
             }
         }
-        System.out.println(indexes);
-        System.out.println("start = " + start);
-        System.out.println("index = " + index);
         for (int i = indexes.get(index - start); i < sequence.size(); i++) {
             // opt算法找出应该被替换的寄存器
             String var1 = sequence.get(i);
@@ -164,7 +143,6 @@ public class RegPool {
             IdentSymbol identSymbol = symbolTable.searchIdentInAllLayers(var);
             finalCodes.add("lw " + allocReg + "," + (space - identSymbol.getAddress()) + "($sp)");
         }
-        System.out.println("分配后： " + tRegs.values());
         return allocReg;
     }
 
@@ -172,11 +150,9 @@ public class RegPool {
         this.start = start;
         indexes.clear();
         sequence.clear();
-        System.out.println("================================");
         for (int i = start; i < end; i++) {
             indexes.add(sequence.size());
             String midCode = midCodes.get(i);
-            System.out.println(midCode);
             String[] five = parseMidCode.parseMidCode(midCode);
             switch (five[0]) {
                 case "1":
@@ -244,6 +220,5 @@ public class RegPool {
                     break;
             }
         }
-        System.out.println("===================================");
     }
 }
