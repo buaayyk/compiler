@@ -619,8 +619,8 @@ public class FinalCodeGenerator {
         ArrayList<String> arrayList = new ArrayList<>(allFieldsVar);
         arrayList.addAll(paras);
         // 这些变量不会去分全局寄存器
-        if(five[1].equals("main")){
-            int b =  1;
+        if (five[1].equals("main")) {
+            int b = 1;
         }
         blockSplit = new BlockSplit(new ArrayList<>(midCodes.subList(index - 1, index - 1 + count)), arrayList);
         blockSplit.blockSplit();
@@ -1103,7 +1103,8 @@ public class FinalCodeGenerator {
 
             String reg;
             if (allocS(arrName).equals("")) {
-                reg = regPool.allocReg(arrName, index - 1, true, new ArrayList<>());
+                // 使用t8不会占据其它临时寄存器
+                reg = "$t8";
             } else {
                 reg = allocS(arrName);
             }
