@@ -10,12 +10,13 @@ public class BlockSplit {
     private final ArrayList<Block> blocks = new ArrayList<>();
     private final ArrayList<String> otherVars;
 
-    public BlockSplit(ArrayList<String> codes,ArrayList<String> otherVars) {
+    public BlockSplit(ArrayList<String> codes, ArrayList<String> otherVars) {
         this.codes = codes;
         this.otherVars = otherVars;
     }
 
-    public void blockSplit() {
+    public void blockSplit(boolean blockBegin) {
+        // block_begin：是否将block_begin加入基本块的划分
         String code;
         String[] five;
         // 建立标签和位置的映射
@@ -61,11 +62,14 @@ public class BlockSplit {
             if (code.equals("@block_end")) {
                 blockStart.add(i + 1);
             }
+            if (blockBegin && code.equals("@block_begin")) {
+                blockStart.add(i);
+            }
         }
         ArrayList<Integer> starts = new ArrayList<>(blockStart);
         Collections.sort(starts);
         for (int i = 0; i < starts.size() - 1; i++) {
-            Block block = new Block(starts.get(i), new ArrayList<>(codes.subList(starts.get(i), starts.get(i + 1))),otherVars);
+            Block block = new Block(starts.get(i), new ArrayList<>(codes.subList(starts.get(i), starts.get(i + 1))), otherVars);
             start2Block.put(starts.get(i), block);
         }
         for (int i = 0; i < starts.size() - 1; i++) {
@@ -200,8 +204,8 @@ public class BlockSplit {
         if (midCodePrint) {
             write(midCodes, "midCode.txt");
         }
-        BlockSplit blockSplit = new BlockSplit(midCodes,new ArrayList<>());
-        blockSplit.blockSplit();
+        BlockSplit blockSplit = new BlockSplit(midCodes, new ArrayList<>());
+        blockSplit.blockSplit(false);
         FinalCodeGenerator finalCodeGenerator = new FinalCodeGenerator(midCodes);
         finalCodeGenerator.generateFinalCodes();
         ArrayList<String> finalCodes = finalCodeGenerator.getFinalCodes();

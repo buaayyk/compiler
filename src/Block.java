@@ -6,7 +6,7 @@ import java.util.regex.Pattern;
 
 public class Block {
     private final int index;
-    public final ArrayList<String> splitCodes;
+    private final ArrayList<String> splitCodes;
     private ArrayList<ArrayList<HashSet<String>>> codes = new ArrayList<>();
     private final HashSet<Block> pre = new HashSet<>();
     private final HashSet<Block> next = new HashSet<>();
@@ -67,6 +67,10 @@ public class Block {
             }
         }
         calDefAndUse();
+    }
+
+    public ArrayList<String> getSplitCodes() {
+        return new ArrayList<>(splitCodes);
     }
 
     public int size() {

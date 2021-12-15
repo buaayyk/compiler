@@ -619,11 +619,8 @@ public class FinalCodeGenerator {
         ArrayList<String> arrayList = new ArrayList<>(allFieldsVar);
         arrayList.addAll(paras);
         // 这些变量不会去分全局寄存器
-        if (five[1].equals("main")) {
-            int b = 1;
-        }
         blockSplit = new BlockSplit(new ArrayList<>(midCodes.subList(index - 1, index - 1 + count)), arrayList);
-        blockSplit.blockSplit();
+        blockSplit.blockSplit(false);
         blocksOffset = index - 1;
 
         blocks = blockSplit.getBlocks();  // 代码分块
@@ -854,7 +851,7 @@ public class FinalCodeGenerator {
             }
         }
         ArrayList<ArrayList<HashSet<String>>> codes = block.getCodes();
-        System.out.println(block.splitCodes);
+        System.out.println(block.getSplitCodes());
         activeVars = block.getActiveOut();
         System.out.println("函数名：" + five[1]);
         System.out.println(activeVars);
