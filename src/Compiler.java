@@ -77,8 +77,16 @@ public class Compiler {
         replaceDuplicate.replaceDuplicate();
         midCodes = replaceDuplicate.getMidCodes();
         if (midCodePrint) {
-            write(midCodes, "midCode.txt");
+            write(midCodes, "midCode2.txt");
         }
+
+//        DagGraph dagGraph = new DagGraph(midCodes);
+//        dagGraph.optimize();
+//        midCodes = dagGraph.getOptimizedMidCodes();
+//        if (midCodePrint) {
+//            write(midCodes, "midCode3.txt");
+//        }
+
         FinalCodeGenerator finalCodeGenerator = new FinalCodeGenerator(midCodes);
         finalCodeGenerator.generateFinalCodes();
         ArrayList<String> finalCodes = finalCodeGenerator.getFinalCodes();

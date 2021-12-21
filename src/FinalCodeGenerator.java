@@ -1,3 +1,4 @@
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -82,7 +83,6 @@ public class FinalCodeGenerator {
         getMidCode();
         String[] five = parseMidCode.parseMidCode(midCodeNow);
         while (five != null) {
-
             if (starts.contains(index - 1) && starts.get(starts.size() - 1) != index - 1) {
                 starts.remove(0);
                 // 进入基本块前清空临时寄存器池
@@ -171,6 +171,25 @@ public class FinalCodeGenerator {
             five = parseMidCode.parseMidCode(midCodeNow);
         }
         finalCodes.addAll(0, dataFinalCodes);
+    }
+
+    private long[] optimizeDiv(int d) {
+        // 这里假设d是正整数
+        long[] number = new long[3];
+        final int N = 32;
+        // number[0]: 移位位数 - N（这样只要直接取hi寄存器的值就行了）;number[1]: 相乘的系数; number[2]: 直接移位还是乘系数后移位
+        int l = (int) Math.ceil(Math.log(d) / Math.log(2));
+        if ((int) Math.pow(2, l) == d) {
+            number[0] = l;
+            number[2] = 1;
+            return number;
+        }
+        long m = (long) Math.ceil(Math.pow(2, N - 1 + l) / d);
+        long m_ = (long) (m - Math.pow(2, N));
+        number[0] = l - 1;
+        number[1] = m_;
+        number[2] = 0;
+        return number;
     }
 
     private void exp(String[] five) {
@@ -297,6 +316,9 @@ public class FinalCodeGenerator {
             }
         }
 
+        int d;
+        long[] number;
+
         switch (op) {
             case "+":
                 switch (kind) {
@@ -376,9 +398,26 @@ public class FinalCodeGenerator {
                         break;
                     case 1:
                         // TODO 优化可能存在的地方
-                        finalCodes.add("li $t9," + reg2);
-                        finalCodes.add("div " + reg1 + ",$t9");
-                        finalCodes.add("mflo " + reg0);
+                        d = Integer.parseInt(reg2);
+                        number = optimizeDiv(d);
+                        if (number[2] == 1) {
+                            if (number[0] == 0) {
+                                finalCodes.add("move " + reg0 + "," + reg1);
+                            } else {
+                                finalCodes.add("sra $t9," + reg1 + "," + (number[0] - 1));
+                                finalCodes.add("srl $t9,$t9," + (32 - number[0]));
+                                finalCodes.add("add $t9," + reg1 + ",$t9");
+                                finalCodes.add("sra " + reg0 + ",$t9," + number[0]);
+                            }
+                        } else {
+                            finalCodes.add("li $t9," + number[1]);
+                            finalCodes.add("mult " + reg1 + ",$t9");
+                            finalCodes.add("mfhi $t9");
+                            finalCodes.add("add " + reg0 + "," + reg1 + ",$t9");
+                            finalCodes.add("sra " + reg0 + "," + reg0 + "," + number[0]);
+                            finalCodes.add("srl $t9," + reg1 + ",31");
+                            finalCodes.add("add " + reg0 + "," + reg0 + ",$t9");
+                        }
                         break;
                     case 2:
                         finalCodes.add("li $t8," + reg1);
@@ -398,9 +437,32 @@ public class FinalCodeGenerator {
                         break;
                     case 1:
                         // TODO 优化可能存在的地方
+                        d = Integer.parseInt(reg2);
+                        number = optimizeDiv(d);
+                        if (number[2] == 1) {
+                            if (number[0] == 0) {
+                                finalCodes.add("move " + reg0 + "," + reg1);
+                            } else {
+                                finalCodes.add("sra $t9," + reg1 + "," + (number[0] - 1));
+                                finalCodes.add("srl $t9,$t9," + (32 - number[0]));
+                                finalCodes.add("add $t9," + reg1 + ",$t9");
+                                finalCodes.add("sra " + reg0 + ",$t9," + number[0]);
+                            }
+                        } else {
+                            finalCodes.add("li $t9," + number[1]);
+                            finalCodes.add("mult " + reg1 + ",$t9");
+                            finalCodes.add("mfhi $t9");
+                            finalCodes.add("add " + reg0 + "," + reg1 + ",$t9");
+                            finalCodes.add("sra " + reg0 + "," + reg0 + "," + number[0]);
+                            finalCodes.add("srl $t9," + reg1 + ",31");
+                            finalCodes.add("add " + reg0 + "," + reg0 + ",$t9");
+                        }
+                        // 到这里为止reg0中计算出了商
+                        // TODO 这里需要使用乘法，之后可以优化
                         finalCodes.add("li $t9," + reg2);
-                        finalCodes.add("div " + reg1 + ",$t9");
-                        finalCodes.add("mfhi " + reg0);
+                        finalCodes.add("mult " + reg0 + ",$t9");
+                        finalCodes.add("mflo $t9");
+                        finalCodes.add("sub " + reg0 + "," + reg1 + ",$t9");
                         break;
                     case 2:
                         finalCodes.add("li $t8," + reg1);
@@ -629,9 +691,6 @@ public class FinalCodeGenerator {
         ConflictMap conflictMap = new ConflictMap(blocks);
         conflictMap.graphColoring(8); // 只用8个s寄存器的图着色
         var2sReg = conflictMap.getVar2sReg();
-        System.out.println(five[1]);
-        System.out.println(var2sReg);
-        System.out.println(var2sReg.values());
 
         starts = blockSplit.getStarts();
         for (int i = 0; i < starts.size(); i++) {
@@ -648,11 +707,9 @@ public class FinalCodeGenerator {
         finalCodes.add("addi $sp,$sp," + (-space));
         alloc += 4;
         finalCodes.add("sw $ra," + (space - alloc) + "($sp)");
-        System.out.println(otherParas);
         for (String otherPara : otherParas) {
             if (!allocS(otherPara).equals("")) {
                 // 如果形参被分配了全局寄存器
-                System.out.println("???????????????????????");
                 IdentSymbol identSymbol = symbolTable.searchIdentInAllLayers(otherPara);
                 String reg = allocS(otherPara);
                 finalCodes.add("lw " + reg + "," + (space - identSymbol.getAddress()) + "($sp)");
@@ -851,10 +908,7 @@ public class FinalCodeGenerator {
             }
         }
         ArrayList<ArrayList<HashSet<String>>> codes = block.getCodes();
-        System.out.println(block.getSplitCodes());
         activeVars = block.getActiveOut();
-        System.out.println("函数名：" + five[1]);
-        System.out.println(activeVars);
         for (int i = blocksOffset + block.getIndex() + block.size() - 1; i >= index - 1; i--) {
             ArrayList<HashSet<String>> code = codes.get(i - blocksOffset - block.getIndex());
             HashSet<String> defs = code.get(0);
@@ -862,7 +916,6 @@ public class FinalCodeGenerator {
             activeVars.removeAll(defs);
             activeVars.addAll(uses);
         }
-        System.out.println(activeVars);
         for (String name : activeVars) {
             String reg = allocS(name);
             if (!reg.equals("")) {
@@ -1296,12 +1349,41 @@ public class FinalCodeGenerator {
         String ident = five[1];
         finalCodes.add("li $v0,5");
         finalCodes.add("syscall");
-        IdentSymbol identSymbol = new IdentSymbol(ident, false);
-        symbolTable.add(identSymbol);
-        alloc += 4;
-        identSymbol.setAddress(alloc);
-        String reg = regPool.allocReg(ident, index - 1, true, new ArrayList<>());
-        finalCodes.add("move " + reg + ",$v0");
+        IdentSymbol identSymbol;
+        String reg;
+
+        identSymbol = symbolTable.searchIdentInAllLayers(ident);
+        if (identSymbol == null) {
+            if (ident.startsWith("#")) {
+                // 临时变量之前一定没有声明过，因此开辟新空间存储
+                identSymbol = new IdentSymbol(ident, false);
+                symbolTable.add(identSymbol);
+                alloc += 4;
+                identSymbol.setAddress(alloc);
+                ArrayList<String> deny = new ArrayList<>();
+                reg = regPool.allocReg(ident, index - 1, true, deny);
+                finalCodes.add("move " + reg + ",$v0");
+            } else {
+                // 用户变量之前声明过，因此没在符号表里面搜到说明是一个全局变量
+                finalCodes.add("sw $v0," + ident);
+            }
+        } else {
+            // 是一个知道位置的非全局变量
+            if (paras.contains(ident)) {
+                // 如果是形参
+                reg = "$a" + paras.indexOf(ident);
+            } else {
+                // 不是形参
+                if (allocS(ident).equals("")) {
+                    // 没有分配到全局寄存器
+                    ArrayList<String> deny = new ArrayList<>();
+                    reg = regPool.allocReg(ident, index - 1, true, deny);
+                } else {
+                    reg = allocS(ident);
+                }
+            }
+            finalCodes.add("move " + reg + ",$v0");
+        }
     }
 
     private void printf(String[] five) {

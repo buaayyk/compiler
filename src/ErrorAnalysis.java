@@ -480,7 +480,4 @@ public class ErrorAnalysis {
         }
     }
 
-    public static void main(String[] args) {
-
-    }
 }
