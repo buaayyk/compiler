@@ -676,7 +676,7 @@ public class FinalCodeGenerator {
             }
         }
 
-        space += 4; // 地址寄存器的空间
+        space += 4; // 地址寄存器的空间f
 
         ArrayList<String> arrayList = new ArrayList<>(allFieldsVar);
         arrayList.addAll(paras);
@@ -1129,7 +1129,7 @@ public class FinalCodeGenerator {
                 }
             }
         }
-        finalCodes.add("beq " + reg + ",0," + label);
+        finalCodes.add("beq " + reg + ",$0," + label);
         finalCodes.add("nop");
     }
 
